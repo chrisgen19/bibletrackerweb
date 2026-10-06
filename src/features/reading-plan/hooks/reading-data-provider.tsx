@@ -23,7 +23,6 @@ import {
 } from "@/features/reading-plan/commands/optimistic";
 import {
   type ReadingErrorCode,
-  type ReadingResult,
   readingErrorMessage,
 } from "@/features/reading-plan/commands/results";
 import {
@@ -41,9 +40,8 @@ import type { ReadingSnapshot } from "@/lib/dal";
 import { compareDateKeys, type DateKey } from "@/utils/date-key";
 import { createId } from "@/utils/id";
 
+import { READING_SNAPSHOT_KEY, readingWriteOptions } from "./reading-writes";
 import { useLocalToday } from "./use-local-today";
-
-export const READING_SNAPSHOT_KEY = ["reading-snapshot"] as const;
 
 /**
  * The same shape as bibletrackerapp's ReadingDataValue, so the ported hooks and screens
@@ -63,7 +61,8 @@ interface ReadingDataValue {
   /**
    * Shows the reading at once and saves it in the background. Returns false, without
    * writing anything, when the server would refuse it: no plan to attach it to, a future
-   * day, or no chapters. A save that fails later is rolled back and reported in `error`.
+   * day, or no chapters. If the server refuses it later, the screen is reconciled with
+   * the server's state and the reason is reported in `error`.
    */
   completeReading: (
     date: DateKey,
@@ -77,12 +76,6 @@ interface ReadingDataValue {
   error: string | null;
   dismissError: () => void;
   isSaving: boolean;
-}
-
-/** A write: what it should look like at once, and the Server Action that does it. */
-interface Command {
-  readonly optimistic: (snapshot: ReadingSnapshot) => ReadingSnapshot;
-  readonly run: () => Promise<ReadingResult>;
 }
 
 const ReadingDataContext = createContext<ReadingDataValue | null>(null);
@@ -112,8 +105,8 @@ interface ReadingDataProviderProps {
  *
  * Offline, a write is not lost: TanStack Query pauses it and Next.js replays a Server
  * Action once the connection returns, so the optimistic state stays on screen (with
- * `isSaving` true) until it is stored. A write is only rolled back when the server
- * refuses it.
+ * `isSaving` true) until it is stored. A write the server refuses is replaced by the
+ * server's state (see reading-writes.ts).
  */
 export function ReadingDataProvider({
   initialSnapshot,
@@ -144,38 +137,9 @@ export function ReadingDataProvider({
     refetchOnWindowFocus: () => queryClient.isMutating() === 0,
   });
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: async (command: Command): Promise<ReadingResult> => {
-      try {
-        return await command.run();
-      } catch {
-        return { ok: false, error: "network" };
-      }
-    },
-    onMutate: async (command) => {
-      await queryClient.cancelQueries({ queryKey: READING_SNAPSHOT_KEY });
-      const previous =
-        queryClient.getQueryData<ReadingSnapshot>(READING_SNAPSHOT_KEY);
-      if (previous !== undefined) {
-        queryClient.setQueryData(
-          READING_SNAPSHOT_KEY,
-          command.optimistic(previous),
-        );
-      }
-      setErrorCode(null);
-      return { previous };
-    },
-    onSuccess: (result, _command, context) => {
-      if (result.ok) {
-        queryClient.setQueryData(READING_SNAPSHOT_KEY, result.snapshot);
-        return;
-      }
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(READING_SNAPSHOT_KEY, context.previous);
-      }
-      setErrorCode(result.error);
-    },
-  });
+  const { mutate, isPending } = useMutation(
+    readingWriteOptions(queryClient, setErrorCode),
+  );
 
   const current = useCallback(
     () =>
