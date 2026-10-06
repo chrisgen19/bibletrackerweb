@@ -54,6 +54,17 @@ function marker(id: string) {
   });
 }
 
+/** The server's copy of a snapshot: its rows carry the server's own timestamp. */
+function asStored(snapshot: ReadingSnapshot): ReadingSnapshot {
+  return {
+    ...snapshot,
+    completions: snapshot.completions.map((row) => ({
+      ...row,
+      completedAt: 1_754_000_000_000,
+    })),
+  };
+}
+
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
   const promise = new Promise<T>((r) => {
@@ -150,14 +161,7 @@ describe("when the server refuses a write", () => {
   it("does not restore a snapshot older than one the server already sent", async () => {
     // The first write succeeds; the second is refused after it. The server's copy of the
     // first carries its own timestamp, so it differs from the optimistic one.
-    const optimisticFirst = marker("a")(withPlan);
-    const afterFirst: ReadingSnapshot = {
-      ...optimisticFirst,
-      completions: optimisticFirst.completions.map((row) => ({
-        ...row,
-        completedAt: 1_754_000_000_000,
-      })),
-    };
+    const afterFirst = asStored(marker("a")(withPlan));
     const server = { current: afterFirst };
     const { write, shown, settled } = setup(withPlan, server);
 
@@ -173,5 +177,55 @@ describe("when the server refuses a write", () => {
     await settled();
 
     expect(shown()).toEqual(afterFirst);
+  });
+});
+
+// Review on #7 (CodeRabbit): an earlier write settling must not hide a later one that is
+// still waiting, or leave a refused change on screen while it waits.
+describe("while a later write is still waiting", () => {
+  it("shows it on top of the snapshot the earlier write brought back", async () => {
+    const server = { current: withPlan };
+    const { write, shown, settled } = setup(withPlan, server);
+    const first = deferred<ReadingResult>();
+    const second = deferred<ReadingResult>();
+
+    const a = write({ optimistic: marker("a"), run: () => first.promise });
+    const b = write({ optimistic: marker("b"), run: () => second.promise });
+    const afterA = asStored(marker("a")(withPlan));
+    first.resolve({ ok: true, snapshot: afterA });
+    await a;
+
+    // B has not answered: the server's copy of A, with B still on top.
+    expect(shown()).toEqual(marker("b")(afterA));
+
+    const afterB = asStored(marker("b")(afterA));
+    server.current = afterB;
+    second.resolve({ ok: true, snapshot: afterB });
+    await b;
+    await settled();
+    expect(shown()).toEqual(afterB);
+  });
+
+  it("drops a refused write at once and keeps the later one", async () => {
+    const server = { current: withPlan };
+    const { write, shown, settled, errors } = setup(withPlan, server);
+    const first = deferred<ReadingResult>();
+    const second = deferred<ReadingResult>();
+
+    const a = write({ optimistic: marker("a"), run: () => first.promise });
+    const b = write({ optimistic: marker("b"), run: () => second.promise });
+    first.resolve(refused("future-date"));
+    await a;
+
+    // B has not answered: A is gone, B is still shown.
+    expect(errors).toContain("future-date");
+    expect(shown()).toEqual(marker("b")(withPlan));
+
+    const afterB = asStored(marker("b")(withPlan));
+    server.current = afterB;
+    second.resolve({ ok: true, snapshot: afterB });
+    await b;
+    await settled();
+    expect(shown()).toEqual(afterB);
   });
 });

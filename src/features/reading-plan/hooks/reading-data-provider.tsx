@@ -137,9 +137,11 @@ export function ReadingDataProvider({
     refetchOnWindowFocus: () => queryClient.isMutating() === 0,
   });
 
-  const { mutate, isPending } = useMutation(
+  // Created once: the writes share what the server last sent (see reading-writes.ts).
+  const [writeOptions] = useState(() =>
     readingWriteOptions(queryClient, setErrorCode),
   );
+  const { mutate, isPending } = useMutation(writeOptions);
 
   const current = useCallback(
     () =>
