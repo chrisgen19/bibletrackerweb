@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { QueryProvider } from "@/components/query-provider";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { WriteStatus } from "@/features/reading-plan/components/write-status";
 import { ReadingDataProvider } from "@/features/reading-plan/hooks/reading-data-provider";
 import { getReadingSnapshot } from "@/lib/dal";
 import { resolveReaderTimeZone } from "@/lib/reader-time-zone";
@@ -31,18 +31,8 @@ export default async function AppLayout({
         initialTimeZone={zone.timeZone}
         initialTimeZoneFromDevice={zone.fromDevice}
       >
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
-            <span className="font-semibold">Bible Daily</span>
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="hidden truncate text-sm text-muted-foreground sm:inline">
-                {user.email}
-              </span>
-              <SignOutButton />
-            </div>
-          </header>
-          {children}
-        </div>
+        {children}
+        <WriteStatus />
       </ReadingDataProvider>
     </QueryProvider>
   );
