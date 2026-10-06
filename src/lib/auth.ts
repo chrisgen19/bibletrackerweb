@@ -27,6 +27,15 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
+  account: {
+    accountLinking: {
+      // Never attach a Google sign-in to an existing account whose email has not been
+      // verified. Without email verification, anyone can sign up with someone else's
+      // address; linking would then hand that password access to the real owner's
+      // account. This is Better Auth 1.7's default, pinned so an upgrade cannot change it.
+      requireLocalEmailVerified: true,
+    },
+  },
   socialProviders:
     env.GOOGLE_CLIENT_ID !== undefined && env.GOOGLE_CLIENT_SECRET !== undefined
       ? {

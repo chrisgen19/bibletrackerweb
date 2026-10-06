@@ -26,3 +26,18 @@ export function authErrorMessage(
   }
   return "Something went wrong. Check your connection and try again.";
 }
+
+/**
+ * Copy for a Google round trip that came back to sign-in, from the `error` code Better
+ * Auth adds to the URL.
+ *
+ * `account_not_linked` means an email + password account already uses this address.
+ * Better Auth refuses to attach Google to it because that email was never verified (see
+ * `requireLocalEmailVerified` in src/lib/auth.ts), so point the reader at the password.
+ */
+export function oauthErrorMessage(error: string | undefined): string {
+  if (error === "account_not_linked") {
+    return "An account with this email already exists. Sign in with your password instead.";
+  }
+  return "Google sign-in didn't complete. Try again.";
+}

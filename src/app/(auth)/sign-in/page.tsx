@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { oauthErrorMessage } from "@/features/auth/auth-error-message";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
 import { firstParam, safeNextPath } from "@/features/auth/safe-next-path";
 import { googleSignInEnabled } from "@/lib/auth";
@@ -36,7 +37,7 @@ export default async function SignInPage({
       <CardContent className="grid gap-4">
         {firstParam(params.oauth) === "failed" ? (
           <p role="alert" className="text-sm text-destructive">
-            Google sign-in didn&apos;t complete. Try again.
+            {oauthErrorMessage(firstParam(params.error))}
           </p>
         ) : null}
         <SignInForm next={next} googleEnabled={googleSignInEnabled} />

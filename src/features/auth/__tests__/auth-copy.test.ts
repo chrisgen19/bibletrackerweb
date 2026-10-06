@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { authErrorMessage } from "../auth-error-message";
+import { authErrorMessage, oauthErrorMessage } from "../auth-error-message";
 import { signInSchema, signUpSchema } from "../schemas";
 
 describe("authErrorMessage", () => {
@@ -25,6 +25,22 @@ describe("authErrorMessage", () => {
       "Something went wrong. Check your connection and try again.",
     );
     expect(authErrorMessage(null)).toMatch(/Something went wrong/);
+  });
+});
+
+describe("oauthErrorMessage", () => {
+  it("points an unlinked Google sign-in at the existing password account", () => {
+    // Better Auth's callback reports "account not linked" as error=account_not_linked.
+    expect(oauthErrorMessage("account_not_linked")).toBe(
+      "An account with this email already exists. Sign in with your password instead.",
+    );
+  });
+
+  it("falls back to a generic retry for anything else", () => {
+    expect(oauthErrorMessage("access_denied")).toBe(
+      "Google sign-in didn't complete. Try again.",
+    );
+    expect(oauthErrorMessage(undefined)).toMatch(/didn't complete/);
   });
 });
 
