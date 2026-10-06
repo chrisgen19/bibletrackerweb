@@ -14,6 +14,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // The domain suites are ported from bibletrackerapp (Jest) and use the global
+    // describe/it/expect. Globals let them run unedited, which is the parity check.
+    globals: true,
     include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
   },
 });

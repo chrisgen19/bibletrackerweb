@@ -35,5 +35,25 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/data/bible/**",
+        "src/features/*/domain/**",
+        "src/utils/date-key.ts",
+        "src/utils/__tests__/date-key.test.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          },
+          "complexity": {
+            "useOptionalChain": "off"
+          }
+        }
+      }
+    }
+  ]
 }
