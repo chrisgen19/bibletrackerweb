@@ -28,25 +28,50 @@ because pnpm 11 needs it; Vitest 5 does not support Node 25.
 pnpm install          # also runs `prisma generate`
 cp .env.example .env  # local defaults match compose.yaml
 pnpm db:up            # Postgres 18 on localhost:5434
+pnpm db:deploy        # apply migrations to the dev database
 pnpm dev
 ```
 
 The database listens on **5434** so it does not clash with a native Postgres on 5432.
+The dev database is `bibletrackerweb`; tests use their own `bibletrackerweb_test`.
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
 | `pnpm dev` | Next.js dev server |
-| `pnpm verify` | Lint + type-check + tests. Run before every commit. |
+| `pnpm verify` | Lint + type-check + tests in three timezones. Needs `pnpm db:up`. Run before every commit. |
 | `pnpm lint` / `pnpm lint:fix` | Biome check (and apply safe fixes) |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` / `pnpm test:watch` | Vitest |
+| `pnpm test` / `pnpm test:watch` | Vitest, unit and database tests |
+| `pnpm test:unit` | Unit tests only, no database needed |
+| `pnpm test:tz` | Every test under UTC, Asia/Manila and America/Los_Angeles |
 | `pnpm db:up` / `pnpm db:down` | Start or stop the local Postgres container |
 | `pnpm db:migrate` | Create and apply a migration in development |
 | `pnpm db:deploy` | Apply pending migrations (CI / production) |
 | `pnpm db:generate` | Regenerate the Prisma client |
 | `pnpm db:studio` | Prisma Studio |
+
+## Testing
+
+Two Vitest projects:
+
+- **unit**: pure logic, including the domain suites ported unedited from bibletrackerapp.
+- **db** (`*.db.test.ts`): the data layer against real Postgres. The test database is the
+  dev database's name plus `_test`, created and migrated with `prisma migrate deploy`
+  automatically. Setup refuses any database whose name does not end in `_test`, and every
+  test makes its own reader, so files run in parallel without clearing tables between
+  tests. Set `TEST_DATABASE_URL` to point it elsewhere (CI).
+
+## Database
+
+- The schema is ported from bibletrackerapp's `src/db/schema.ts`, with every reading row
+  scoped to a user (Better Auth's `user` table).
+- CHECK constraints are hand-written at the end of the `init` migration because Prisma
+  cannot express them; Prisma leaves them alone when diffing.
+- The "one open plan per user" index uses Prisma's `partialIndexes` preview feature, so
+  Prisma manages it instead of dropping it as unknown.
+- `prisma migrate reset` deletes all data. Only ever run it against a local database.
 
 ## Project rules
 

@@ -1,13 +1,115 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Ported from bibletrackerapp's src/db/schema.ts (SQLite + Drizzle). Every reading row
+// is scoped to a user; otherwise the tables and their rules are the same.
+//
+// Columns are snake_case. CHECK constraints live in the migration SQL because Prisma
+// cannot express them (it also leaves them alone when diffing).
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  // For the "one open plan per user" index on ReadingPlan.
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+/// Better Auth's core user table (fields as defined by @better-auth/core 1.7).
+/// Sessions, accounts and verification tokens arrive with auth in Phase 3.
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  readingPlans       ReadingPlan[]
+  readingCompletions ReadingCompletion[]
+  appSettings        AppSetting[]
+
+  @@map("user")
+}
+
+/// A segment of a reader's history.
+///
+/// Rows are append-only: changing the reading position closes the open segment
+/// (`end_date`, `is_active = false`) and inserts a new one. Nothing that governed a
+/// past date is ever rewritten, so historical progress cannot silently change.
+model ReadingPlan {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id")
+  canonId        String    @default("protestant") @map("canon_id")
+  /// Local calendar day (`YYYY-MM-DD` in the domain).
+  startDate      DateTime  @map("start_date") @db.Date
+  startBookId    String    @map("start_book_id")
+  startChapter   Int       @map("start_chapter")
+  chaptersPerDay Int       @default(1) @map("chapters_per_day")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  isActive       Boolean   @default(true) @map("is_active")
+  /// Inclusive last day this segment governs. Null while open-ended.
+  endDate        DateTime? @map("end_date") @db.Date
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completions ReadingCompletion[]
+
+  // Target of ReadingCompletion's (reading_plan_id, user_id) foreign key, so a
+  // completion can never point at another reader's plan.
+  @@unique([id, userId])
+  // One open segment per reader: two devices moving the position at once cannot both
+  // leave an active plan behind.
+  @@unique([userId], map: "reading_plan_one_open_per_user", where: { isActive: true, endDate: null })
+  @@index([userId, startDate])
+  @@map("reading_plan")
+}
+
+/// One row per chapter (or verse span) actually read.
+///
+/// `book_id`/`chapter` are snapshotted rather than derived, so a completed day keeps
+/// showing what the reader read even after the plan changes.
+model ReadingCompletion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id")
+  readingPlanId String   @map("reading_plan_id") @db.Uuid
+  /// Local calendar day, so an 11:50 PM reading lands on the day the reader experienced.
+  localDate     DateTime @map("local_date") @db.Date
+  bookId        String   @map("book_id")
+  chapter       Int
+  /// Inclusive verse span actually read. `0, 0` means "the whole chapter, span not
+  /// recorded", the legacy value from before verse tracking.
+  ///
+  /// NOT NULL on purpose: NULLs are distinct in a unique index, so a nullable span
+  /// would let the same reading be recorded twice.
+  fromVerse     Int      @default(0) @map("from_verse")
+  toVerse       Int      @default(0) @map("to_verse")
+  completedAt   DateTime @map("completed_at") @db.Timestamptz(3)
+  /// Insertion order. SQLite returned same-day rows in rowid order and the domain relies
+  /// on it (a multi-chapter day lists its chapters in the order they were logged, so it
+  /// formats as "Genesis 13-14", not "Genesis 14-13"). Postgres has no implicit order,
+  /// so queries break ties on this.
+  seq           BigInt   @default(autoincrement())
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan ReadingPlan @relation(fields: [readingPlanId, userId], references: [id, userId], onDelete: Cascade)
+
+  // Keyed on the span as well as the chapter, so reading 1-10 and later 11-31 are two
+  // rows while re-logging the same span stays a no-op.
+  @@unique([userId, localDate, bookId, chapter, fromVerse, toVerse], map: "reading_completion_day_span_unique")
+  @@index([userId, localDate])
+  @@map("reading_completion")
+}
+
+/// Small per-user key/value store for preferences that do not deserve their own table.
+model AppSetting {
+  userId    String   @map("user_id")
+  key       String
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
+  @@map("app_setting")
 }

@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Next.js loads .env for the app; tests import the same modules, so load it here too.
@@ -11,12 +12,39 @@ else if (existsSync(".env.example")) process.loadEnvFile(".env.example");
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
+    alias: {
+      "server-only": fileURLToPath(
+        new URL("./src/test/server-only.ts", import.meta.url),
+      ),
+    },
   },
   test: {
     environment: "node",
     // The domain suites are ported from bibletrackerapp (Jest) and use the global
     // describe/it/expect. Globals let them run unedited, which is the parity check.
     globals: true,
-    include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
+          exclude: ["src/**/__tests__/**/*.db.test.ts"],
+          // Everything under test talks to <name>_test, never the dev database.
+          setupFiles: ["./src/test/test-env.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // Integration tests for the data layer, against a real Postgres. Start it
+          // with `pnpm db:up`.
+          name: "db",
+          include: ["src/**/__tests__/**/*.db.test.ts"],
+          globalSetup: ["./src/test/db-global-setup.ts"],
+          setupFiles: ["./src/test/test-env.ts", "./src/test/db-setup.ts"],
+        },
+      },
+    ],
   },
 });
