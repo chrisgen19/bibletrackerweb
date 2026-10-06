@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bible Daily",
+  title: { default: "Bible Daily", template: "%s | Bible Daily" },
   description:
     "A daily Bible reading tracker. One chapter a day, tracked on a monthly calendar.",
 };
