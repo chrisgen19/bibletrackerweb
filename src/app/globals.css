@@ -2,43 +2,58 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/*
+ * Design tokens from bibletrackerapp's src/theme/tokens.ts. Nothing hard-codes a colour,
+ * radius or type size; light and dark stay in lockstep through these variables.
+ *
+ * <html data-appearance> is rendered on the server from the appearance cookie, so the
+ * first paint is already right: "dark" always, "system" whenever the device is dark.
+ */
+@custom-variant dark {
+  &:where([data-appearance="dark"], [data-appearance="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-appearance="system"], [data-appearance="system"] *) {
+      @slot;
+    }
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  /* iOS `accent`: the brand brown. */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  /* iOS `accentSoft`: badges, today's fill. */
+  --color-primary-soft: var(--primary-soft);
+  /* iOS `accentMuted`: future scheduled hints. */
+  --color-primary-muted: var(--primary-muted);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  /* iOS `surfaceSubtle` and `textSecondary`. */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  /* iOS `textTertiary`. */
+  --color-faint: var(--faint);
+  /* iOS `surfacePressed`. */
+  --color-pressed: var(--pressed);
+  /* shadcn's hover fill, not the brand colour (that is `primary`). */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  /* iOS `separator` and `separatorStrong`. */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* iOS radius sm 8, md 12, lg 16, xl 22, xxl 28 land on sm, lg, xl, 2xl, 3xl. */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -46,75 +61,111 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Shadows only in light mode: on dark backgrounds borders carry elevation. */
+  --shadow-card: var(--card-shadow);
+  --shadow-raised: var(--raised-shadow);
+}
+
+/* The iOS type ramp. iOS uses the system font, as Tailwind's default font-sans does. */
+@theme {
+  --text-large-title: 2rem;
+  --text-large-title--line-height: 2.375rem;
+  --text-large-title--font-weight: 700;
+  --text-large-title--letter-spacing: -0.0375rem;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.875rem;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.025rem;
+  --text-display: 2.125rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.05rem;
+  --text-headline: 1.0625rem;
+  --text-headline--line-height: 1.375rem;
+  --text-headline--font-weight: 600;
+  --text-headline--letter-spacing: -0.0125rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.375rem;
+  --text-callout: 0.9375rem;
+  --text-callout--line-height: 1.25rem;
+  --text-footnote: 0.8125rem;
+  --text-footnote--line-height: 1.125rem;
+  /* Section eyebrows, always upper case. */
+  --text-overline: 0.75rem;
+  --text-overline--line-height: 1rem;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.05rem;
+  --text-calendar-day: 1rem;
+  --text-calendar-day--line-height: 1.25rem;
+  --text-calendar-day--font-weight: 500;
+  --text-weekday: 0.75rem;
+  --text-weekday--line-height: 1rem;
+  --text-weekday--font-weight: 600;
+  --text-weekday--letter-spacing: 0.0125rem;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  color-scheme: light;
+  --radius: 0.75rem;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #fbfaf8;
+  --foreground: #191714;
+  --card: #ffffff;
+  --card-foreground: #191714;
+  --popover: #ffffff;
+  --popover-foreground: #191714;
+  --primary: #8c5a33;
+  --primary-foreground: #ffffff;
+  --primary-soft: #f3e8dc;
+  --primary-muted: #c9a583;
+  --secondary: #f2efea;
+  --secondary-foreground: #191714;
+  --muted: #f2efea;
+  --muted-foreground: #6b645b;
+  --faint: #a69e94;
+  --pressed: #e9e4dc;
+  --accent: #f2efea;
+  --accent-foreground: #191714;
+  --destructive: #a23a2e;
+  --destructive-soft: #f7e5e2;
+  --border: #e8e3db;
+  --border-strong: #d7d0c5;
+  --input: #d7d0c5;
+  --ring: #c9a583;
+  --card-shadow: 0 4px 12px rgb(59 46 32 / 0.05);
+  --raised-shadow: 0 8px 20px rgb(59 46 32 / 0.09);
+
+  /* Nested, so it compiles to :root:where(...); a top-level @variant would not match. */
+  @variant dark {
+    color-scheme: dark;
+
+    --background: #121110;
+    --foreground: #f5f2ed;
+    --card: #1c1a18;
+    --card-foreground: #f5f2ed;
+    --popover: #1c1a18;
+    --popover-foreground: #f5f2ed;
+    --primary: #e0a876;
+    --primary-foreground: #1b120a;
+    --primary-soft: #2e241b;
+    --primary-muted: #7c5c3f;
+    --secondary: #26231f;
+    --secondary-foreground: #f5f2ed;
+    --muted: #26231f;
+    --muted-foreground: #a69f96;
+    --faint: #6f6860;
+    --pressed: #332f2a;
+    --accent: #26231f;
+    --accent-foreground: #f5f2ed;
+    --destructive: #e28173;
+    --destructive-soft: #33211e;
+    --border: #2c2925;
+    --border-strong: #3b3732;
+    --input: #3b3732;
+    --ring: #7c5c3f;
+    --card-shadow: none;
+    --raised-shadow: none;
+  }
 }
 
 @layer base {
