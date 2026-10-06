@@ -45,6 +45,7 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  type,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -58,6 +59,10 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      // Local change from upstream shadcn: a native button submits its form unless told
+      // otherwise, so default to "button" and make type="submit" explicit. asChild leaves
+      // the type to the child. Guarded by __tests__/button.test.tsx.
+      type={asChild ? type : (type ?? "button")}
       {...props}
     />
   );
