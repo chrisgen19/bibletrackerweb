@@ -27,19 +27,21 @@ because pnpm 11 needs it; Vitest 5 does not support Node 25.
 ```bash
 pnpm install          # also runs `prisma generate`
 cp .env.example .env  # local defaults match compose.yaml
+# then replace BETTER_AUTH_SECRET in .env with the output of: openssl rand -base64 32
 pnpm db:up            # Postgres 18 on localhost:5434
 pnpm db:deploy        # apply migrations to the dev database
-pnpm dev
+pnpm dev              # http://localhost:3100
 ```
 
 The database listens on **5434** so it does not clash with a native Postgres on 5432.
 The dev database is `bibletrackerweb`; tests use their own `bibletrackerweb_test`.
+The app runs on **3100**: Google's OAuth redirect URI has to name a fixed port.
 
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
-| `pnpm dev` | Next.js dev server |
+| `pnpm dev` | Next.js dev server on port 3100 |
 | `pnpm verify` | Lint + type-check + tests in three timezones. Needs `pnpm db:up`. Run before every commit. |
 | `pnpm lint` / `pnpm lint:fix` | Biome check (and apply safe fixes) |
 | `pnpm typecheck` | `tsc --noEmit` |
@@ -62,6 +64,34 @@ Two Vitest projects:
   automatically. Setup refuses any database whose name does not end in `_test`, and every
   test makes its own reader, so files run in parallel without clearing tables between
   tests. Set `TEST_DATABASE_URL` to point it elsewhere (CI).
+
+## Authentication
+
+[Better Auth](https://www.better-auth.com) with email + password, and Google when it is
+configured. Config lives in `src/lib/auth.ts`; every endpoint is served by
+`src/app/api/auth/[...all]/route.ts`.
+
+- `src/proxy.ts` sends visitors without a session cookie to `/sign-in`. It only checks
+  that a cookie exists, so every protected page, layout and Server Action calls
+  `requireUser()` (`src/lib/session.ts`), which validates the session.
+- There is no email provider yet: addresses are not verified and there is no password
+  reset by email. Google accounts are unaffected.
+- `BETTER_AUTH_SECRET` must be at least 32 characters. The `.env.example` placeholder
+  works locally and is refused in production.
+
+### Google sign-in (optional)
+
+Leave `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` empty and the Google button is
+hidden. To turn it on:
+
+1. In Google Cloud Console, open **APIs & Services > Credentials** and create an
+   **OAuth client ID** of type **Web application**.
+2. Add the authorised redirect URI `http://localhost:3100/api/auth/callback/google`
+   (and the production one, `https://<your-domain>/api/auth/callback/google`, later).
+3. Put the client ID and secret in `.env`, and restart `pnpm dev`.
+
+Vercel preview URLs change on every deploy, so Google sign-in only works on fixed
+domains; email + password works everywhere.
 
 ## Database
 
