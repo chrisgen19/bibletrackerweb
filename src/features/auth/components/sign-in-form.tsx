@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
+import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
 import { type SignInValues, signInSchema } from "../schemas";
@@ -31,7 +31,9 @@ export function SignInForm({ next, googleEnabled }: SignInFormProps) {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    const { error } = await authClient.signIn.email(values);
+    const { error } = await catchNetworkFailure(() =>
+      authClient.signIn.email(values),
+    );
     if (error) {
       setFormError(authErrorMessage(error));
       return;

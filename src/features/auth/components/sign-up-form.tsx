@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
+import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
 import { PASSWORD_MIN, type SignUpValues, signUpSchema } from "../schemas";
@@ -32,7 +32,9 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
     // Signing up also signs in, so the reader goes straight on.
-    const { error } = await authClient.signUp.email(values);
+    const { error } = await catchNetworkFailure(() =>
+      authClient.signUp.email(values),
+    );
     if (error) {
       setFormError(authErrorMessage(error));
       return;

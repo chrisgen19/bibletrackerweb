@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
+import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
 
@@ -18,11 +18,13 @@ export function GoogleButton({ next }: { next: string }) {
   async function continueWithGoogle() {
     setPending(true);
     setError(null);
-    const result = await authClient.signIn.social({
-      provider: "google",
-      callbackURL: next,
-      errorCallbackURL: "/sign-in?oauth=failed",
-    });
+    const result = await catchNetworkFailure(() =>
+      authClient.signIn.social({
+        provider: "google",
+        callbackURL: next,
+        errorCallbackURL: "/sign-in?oauth=failed",
+      }),
+    );
     if (result.error) {
       setPending(false);
       setError(authErrorMessage(result.error));
