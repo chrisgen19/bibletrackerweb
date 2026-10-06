@@ -15,8 +15,10 @@ datasource db {
   provider = "postgresql"
 }
 
-/// Better Auth's core user table (fields as defined by @better-auth/core 1.7).
-/// Sessions, accounts and verification tokens arrive with auth in Phase 3.
+// Better Auth tables. Fields match @better-auth/core 1.7's get-tables definitions;
+// only the column names differ (snake_case via @map), which the adapter never sees.
+
+/// Better Auth's core user table.
 model User {
   id            String   @id
   name          String
@@ -26,11 +28,66 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  sessions           Session[]
+  accounts           Account[]
   readingPlans       ReadingPlan[]
   readingCompletions ReadingCompletion[]
   appSettings        AppSetting[]
 
   @@map("user")
+}
+
+/// A signed-in browser. The cookie carries `token`.
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+/// A way to sign in: provider "credential" (email + password, with the password hash)
+/// or an OAuth provider such as "google".
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+/// Short-lived tokens (OAuth state, and later email verification or password reset).
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
 }
 
 /// A segment of a reader's history.
