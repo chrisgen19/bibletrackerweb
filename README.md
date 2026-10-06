@@ -90,8 +90,11 @@ hidden. To turn it on:
    (and the production one, `https://<your-domain>/api/auth/callback/google`, later).
 3. Put the client ID and secret in `.env`, and restart `pnpm dev`.
 
-Vercel preview URLs change on every deploy, so Google sign-in only works on fixed
-domains; email + password works everywhere.
+**Preview deployments:** Better Auth rejects sign-in requests from any origin other
+than `BETTER_AUTH_URL` (`403 INVALID_ORIGIN`), so neither email + password nor Google
+works on Vercel preview URLs yet. Phase 6 adds this project's own preview hosts to
+`baseURL.allowedHosts`; never allow all of `*.vercel.app`, which would trust every
+Vercel deployment on the internet.
 
 ## Database
 
