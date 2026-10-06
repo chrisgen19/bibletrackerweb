@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getTimeZone } from "@/lib/dal";
+import { getAllReadingPlans, getTimeZone } from "@/lib/dal";
+import { db } from "@/lib/db";
 import { createTestUser, makeDraft } from "@/test/factories";
 import { createId } from "@/utils/id";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -91,6 +92,46 @@ describe("changePlanFor", () => {
         timeZone: TZ,
       }),
     ).toEqual({ ok: false, error: "no-plan" });
+  });
+
+  // Review on #7 (Codex): another device resets progress while this one changes its
+  // position. In either order the reader ends with no plan; the change must not bring one
+  // back. Deterministic version: the reset holds the reader's lock with its deletes done
+  // but not committed, the change starts, then the reset commits.
+  it("does not bring a plan back when a reset commits while the change waits", async () => {
+    await startPlanFor(user, { draft: makeDraft({ startDate: "2026-01-01" }) });
+
+    let commitReset = () => {};
+    const committed = new Promise<void>((resolve) => {
+      commitReset = resolve;
+    });
+    let markResetReady = () => {};
+    const resetReady = new Promise<void>((resolve) => {
+      markResetReady = resolve;
+    });
+    const reset = db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`;
+        await tx.readingCompletion.deleteMany({ where: { userId: user } });
+        await tx.readingPlan.deleteMany({ where: { userId: user } });
+        markResetReady();
+        await committed;
+      },
+      { timeout: 15_000 },
+    );
+
+    await resetReady;
+    const change = changePlanFor(user, {
+      draft: makeDraft({ startDate: today(), startBookId: "MAT" }),
+      timeZone: TZ,
+    });
+    // Give the change time to reach the database and block behind the reset.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    commitReset();
+    await reset;
+
+    expect(await change).toEqual({ ok: false, error: "no-plan" });
+    expect(await getAllReadingPlans(user)).toEqual([]);
   });
 });
 

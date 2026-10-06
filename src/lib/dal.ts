@@ -167,21 +167,27 @@ export async function createReadingPlan(
  * The outgoing segment is closed on the day before the new one begins, so every past
  * date keeps resolving to the plan that actually governed it. Completions are never
  * modified.
+ *
+ * Returns null, writing nothing, when there is no open segment to replace. iOS inserts
+ * anyway, but cannot reach that case on one device. Here it means another device reset
+ * progress, so it is checked under the lock: the reset either finished first and this
+ * refuses, or it waits for this change and then removes it too.
  */
 export async function replaceActiveReadingPlan(
   userId: string,
   draft: ReadingPlanDraft,
-): Promise<ReadingPlan> {
+): Promise<ReadingPlan | null> {
   return db.$transaction(async (tx) => {
     await lockReader(tx, userId);
     // The outgoing segment governs up to the day before the new one begins. When both
     // start on the same day it ends up with end_date < start_date, which matches no
     // date at all: exactly the intent, and completions recorded against it stay put.
     const closeOn = toDbDate(addDaysToDateKey(draft.startDate, -1));
-    await tx.readingPlan.updateMany({
+    const closed = await tx.readingPlan.updateMany({
       where: { userId, isActive: true },
       data: { isActive: false, endDate: closeOn },
     });
+    if (closed.count === 0) return null;
     return toPlan(
       await tx.readingPlan.create({ data: planData(userId, draft) }),
     );

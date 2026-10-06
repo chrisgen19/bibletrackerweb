@@ -1,4 +1,8 @@
-import type { ReadingPlanDraft } from "@/features/reading-plan/domain/types";
+import type {
+  ReadingPlan,
+  ReadingPlanDraft,
+} from "@/features/reading-plan/domain/types";
+import { replaceActiveReadingPlan } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { createId } from "@/utils/id";
 
@@ -27,4 +31,17 @@ export function makeDraft(
     chaptersPerDay: 1,
     ...overrides,
   };
+}
+
+/**
+ * replaceActiveReadingPlan for a test that expects an open segment to exist: fails the
+ * test instead of returning null, so later assertions cannot pass on a missing plan.
+ */
+export async function replacePlan(
+  userId: string,
+  draft: ReadingPlanDraft,
+): Promise<ReadingPlan> {
+  const plan = await replaceActiveReadingPlan(userId, draft);
+  if (plan === null) throw new Error("Expected an open segment to replace");
+  return plan;
 }
