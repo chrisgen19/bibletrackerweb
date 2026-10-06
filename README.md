@@ -21,7 +21,8 @@ and phase checklist live in [issue #1](https://github.com/chrisgen19/bibletracke
 
 ## Running locally
 
-Requires Node 22+ (24 recommended), pnpm 11, and Docker.
+Requires Node 22.13+ or 24 (recommended), pnpm 11, and Docker. 22.13 is the floor
+because pnpm 11 needs it; Vitest 5 does not support Node 25.
 
 ```bash
 pnpm install          # also runs `prisma generate`
