@@ -15,6 +15,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:tz": "TZ=UTC vitest run && TZ=Asia/Manila vitest run && TZ=America/Los_Angeles vitest run",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:generate": "prisma generate",
@@ -22,7 +23,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test:tz"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
