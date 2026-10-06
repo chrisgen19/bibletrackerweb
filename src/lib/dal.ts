@@ -121,6 +121,17 @@ function findAllCompletions(client: Executor, userId: string) {
   });
 }
 
+/**
+ * True when a write failed on a unique constraint, such as a second open plan for the
+ * same reader (a double-submitted onboarding form).
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
 // Reading plans (bibletrackerapp: reading-plan-repository.ts)
 
 /** The open-ended segment, or `null` before onboarding. */
@@ -229,6 +240,12 @@ export interface MarkCompleteInput {
    */
   readonly verses?: VerseRange;
   readonly completedAt?: number;
+  /**
+   * Row ids, one per chapter. The browser shows a reading before the server confirms it,
+   * so it picks the ids; storing the same ones means undoing that reading straight away
+   * removes the right row. Omit to let the database generate them.
+   */
+  readonly ids?: readonly string[];
 }
 
 /**
@@ -251,7 +268,10 @@ export async function markReadingComplete(
   const span = input.chapters.length === 1 ? input.verses : undefined;
 
   await db.readingCompletion.createMany({
-    data: input.chapters.map((chapter) => ({
+    data: input.chapters.map((chapter, position) => ({
+      ...(input.ids?.[position] === undefined
+        ? {}
+        : { id: input.ids[position] }),
       userId,
       readingPlanId: input.readingPlanId,
       localDate,

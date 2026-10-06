@@ -96,6 +96,28 @@ works on Vercel preview URLs yet. Phase 6 adds this project's own preview hosts 
 `baseURL.allowedHosts`; never allow all of `*.vercel.app`, which would trust every
 Vercel deployment on the internet.
 
+## Reading data
+
+The reading logic is bibletrackerapp's, unchanged; the web adds a server round trip.
+
+- **Writes** are Server Actions in `src/actions/reading.ts`. Each checks the session and
+  hands off to `src/features/reading-plan/commands/commands.ts`, which validates the input
+  (no future days, real chapters, verse spans within the chapter), writes through the DAL
+  and returns the whole snapshot, as the iOS provider re-read it after every write.
+- **The screen updates first.** `ReadingDataProvider` (TanStack Query) applies the same
+  change locally (`commands/optimistic.ts`), then replaces it with the server's snapshot. A
+  contract test runs identical writes through both and requires the results to match.
+  New readings carry client-generated ids, so undoing one before the server answers
+  removes the right row.
+- **Offline**, a write waits instead of failing: TanStack Query pauses it and Next.js
+  replays the Server Action when the connection returns, so it stays on screen until it is
+  stored. A write the server refuses is rolled back with a message.
+- **Other devices**: the snapshot is refetched (`GET /api/reading/snapshot`) whenever the
+  tab regains focus, unless a write is still pending.
+- **"Today" belongs to the device**, as on iOS. The server renders with the device's `tz`
+  cookie (then the stored zone, then UTC); the browser corrects it after loading, re-checks
+  on focus and at local midnight, and tells the server when its zone changes.
+
 ## Database
 
 - The schema is ported from bibletrackerapp's `src/db/schema.ts`, with every reading row
