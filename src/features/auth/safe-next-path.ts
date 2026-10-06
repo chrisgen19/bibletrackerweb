@@ -5,6 +5,22 @@ export function firstParam(
   return Array.isArray(value) ? value[0] : value;
 }
 
+/**
+ * A link to sign-in or sign-up that carries `next` along, so the reader still ends up
+ * where they were going after switching screens or after a failed Google round trip.
+ * `next` must already have been through `safeNextPath`.
+ */
+export function authHref(
+  path: "/sign-in" | "/sign-up",
+  next: string,
+  extra: Record<string, string> = {},
+): string {
+  const params = new URLSearchParams(extra);
+  if (next !== "/") params.set("next", next);
+  const query = params.toString();
+  return query === "" ? path : `${path}?${query}`;
+}
+
 /** An origin nothing runs on, used only to see where a path would resolve. */
 const PROBE_ORIGIN = "http://next-path.invalid";
 

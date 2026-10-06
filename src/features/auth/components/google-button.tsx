@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
+import { authHref } from "../safe-next-path";
 
 /**
  * "Continue with Google". On success the browser leaves for Google and comes back to
- * `next`; if Google sends the reader back with an error, they land on sign-in again.
+ * `next`; if Google sends the reader back with an error, they land on sign-in again,
+ * still carrying `next`.
  */
 export function GoogleButton({ next }: { next: string }) {
   const [pending, setPending] = useState(false);
@@ -22,7 +24,8 @@ export function GoogleButton({ next }: { next: string }) {
       authClient.signIn.social({
         provider: "google",
         callbackURL: next,
-        errorCallbackURL: "/sign-in?oauth=failed",
+        // Keep `next`, so signing in another way afterwards still lands there.
+        errorCallbackURL: authHref("/sign-in", next, { oauth: "failed" }),
       }),
     );
     if (result.error) {

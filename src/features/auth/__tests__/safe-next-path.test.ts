@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { firstParam, safeNextPath } from "../safe-next-path";
+import { authHref, firstParam, safeNextPath } from "../safe-next-path";
 
 describe("safeNextPath", () => {
   it.each([
@@ -69,6 +69,34 @@ describe("safeNextPath", () => {
   it("defaults to home when there is no parameter", () => {
     expect(safeNextPath(undefined)).toBe("/");
     expect(safeNextPath(null)).toBe("/");
+  });
+});
+
+describe("authHref", () => {
+  it("leaves out next when it is home", () => {
+    expect(authHref("/sign-in", "/")).toBe("/sign-in");
+    expect(authHref("/sign-up", "/")).toBe("/sign-up");
+  });
+
+  it("carries next to the other auth screen", () => {
+    expect(authHref("/sign-up", "/settings")).toBe("/sign-up?next=%2Fsettings");
+  });
+
+  it("keeps next on the Google error return, after Better Auth adds its error", () => {
+    // Review on #6: the error callback used to drop next, so a reader sent back to
+    // use their password ended up on "/" instead of where they were going.
+    const errorURL = authHref("/sign-in", "/day/2026-08-01?book=GEN", {
+      oauth: "failed",
+    });
+    const returned = new URL(
+      `${errorURL}&error=account_not_linked`,
+      "http://localhost:3100",
+    );
+    expect(returned.searchParams.get("oauth")).toBe("failed");
+    expect(returned.searchParams.get("error")).toBe("account_not_linked");
+    expect(safeNextPath(returned.searchParams.get("next"))).toBe(
+      "/day/2026-08-01?book=GEN",
+    );
   });
 });
 

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
+import { authHref } from "../safe-next-path";
 import { type SignInValues, signInSchema } from "../schemas";
 import { GoogleButton } from "./google-button";
 import { TextField } from "./text-field";
@@ -42,8 +43,7 @@ export function SignInForm({ next, googleEnabled }: SignInFormProps) {
     router.refresh();
   });
 
-  const signUpHref =
-    next === "/" ? "/sign-up" : `/sign-up?next=${encodeURIComponent(next)}`;
+  const signUpHref = authHref("/sign-up", next);
 
   return (
     <div className="grid gap-6">
