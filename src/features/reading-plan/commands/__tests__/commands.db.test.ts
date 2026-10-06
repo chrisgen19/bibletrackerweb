@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAllReadingPlans, getTimeZone } from "@/lib/dal";
 import { db } from "@/lib/db";
@@ -25,6 +25,19 @@ let user: string;
 beforeEach(async () => {
   user = await createTestUser();
 });
+
+/**
+ * Resolves once another session is blocked waiting for this reader's advisory lock. A
+ * bigint key shows in pg_locks as its high and low 32 bits (classid, objid), objsubid 1.
+ */
+async function lockWaitersFor(userId: string): Promise<number> {
+  const [row] = await db.$queryRaw<{ waiting: number }[]>`
+    SELECT count(*)::int AS waiting FROM pg_locks
+    WHERE locktype = 'advisory' AND NOT granted AND objsubid = 1
+      AND classid::bigint = (hashtextextended(${userId}, 0) >> 32) & 4294967295
+      AND objid::bigint = hashtextextended(${userId}, 0) & 4294967295`;
+  return row?.waiting ?? 0;
+}
 
 function snapshotOf(result: ReadingResult) {
   if (!result.ok) throw new Error(`Expected success, got ${result.error}`);
@@ -125,8 +138,12 @@ describe("changePlanFor", () => {
       draft: makeDraft({ startDate: today(), startBookId: "MAT" }),
       timeZone: TZ,
     });
-    // Give the change time to reach the database and block behind the reset.
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Only commit once the change is blocked on the lock, so it really did start (and,
+    // before the fix, run its unlocked check) while the reset was still open.
+    await vi.waitFor(async () => expect(await lockWaitersFor(user)).toBe(1), {
+      timeout: 5_000,
+      interval: 20,
+    });
     commitReset();
     await reset;
 
