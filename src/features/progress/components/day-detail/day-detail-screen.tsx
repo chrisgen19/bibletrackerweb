@@ -6,6 +6,7 @@ import { useEffect } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
+import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 
 import { useDayDetail } from "../../hooks/use-day-detail";
 import { DayDetail } from "./day-detail";
@@ -31,9 +32,10 @@ export function DayDetailScreen({
 
   // Without any plan there is nothing to attach a reading to (a reset on another
   // device, say). Mirror the main screen and go to onboarding, as on iOS.
+  const settled = useWritesSettled();
   useEffect(() => {
-    if (plans.length === 0) router.replace("/onboarding");
-  }, [plans.length, router]);
+    if (plans.length === 0 && settled) router.replace("/onboarding");
+  }, [plans.length, settled, router]);
 
   if (detail === null) {
     return (

@@ -16,10 +16,7 @@ import type {
   ReadingResult,
   SettingResult,
 } from "@/features/reading-plan/commands/results";
-import {
-  APPEARANCE_COOKIE,
-  APPEARANCE_COOKIE_MAX_AGE,
-} from "@/lib/appearance-cookie";
+import { APPEARANCE_COOKIE, APPEARANCE_COOKIE_MAX_AGE } from "@/lib/appearance";
 import {
   TIME_ZONE_COOKIE,
   TIME_ZONE_COOKIE_MAX_AGE,

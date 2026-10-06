@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { IconButton } from "@/components/icon-button";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
+import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 
 import {
   addMonthsToMonthKey,
@@ -36,9 +37,11 @@ export function ProgressScreen() {
   const currentMonthKey = useMemo(() => monthKeyFromDateKey(today), [today]);
 
   // A reset on this or another device ends the plan: back to onboarding, as on iOS.
+  // Only once it is stored, or the server would still see the plan and send us back.
+  const settled = useWritesSettled();
   useEffect(() => {
-    if (!hasCompletedOnboarding) router.replace("/onboarding");
-  }, [hasCompletedOnboarding, router]);
+    if (!hasCompletedOnboarding && settled) router.replace("/onboarding");
+  }, [hasCompletedOnboarding, settled, router]);
 
   function markTodayRead() {
     if (todayReading.scheduled.kind !== "scheduled") return;

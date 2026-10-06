@@ -4,8 +4,8 @@ import { type KeyboardEvent, useId, useMemo, useState } from "react";
 
 import type { BibleBook } from "@/data/bible/canon";
 import { getCanonIndex } from "@/data/bible/canon-index";
-import { cn } from "@/lib/utils";
 
+import { BookList } from "./book-list";
 import { PickerDialog } from "./picker-dialog";
 
 interface BookPickerProps {
@@ -24,8 +24,6 @@ function matches(book: BibleBook, query: string): boolean {
     book.abbreviation.toLowerCase().includes(needle)
   );
 }
-
-const TESTAMENT_LABEL = { old: "Old Testament", new: "New Testament" } as const;
 
 /**
  * Searchable book list, grouped by testament when no query is active. Type to filter;
@@ -99,62 +97,15 @@ export function BookPicker({
         </div>
       }
     >
-      {results.length === 0 ? (
-        <p className="py-8 text-center text-callout text-muted-foreground">
-          No books match &ldquo;{query}&rdquo;.
-        </p>
-      ) : (
-        <div id={listId} role="listbox" aria-label="Books">
-          {results.map((book, position) => {
-            const previous = results[position - 1];
-            const showSection =
-              query === "" && previous?.testament !== book.testament;
-            return (
-              <div key={book.id} role="presentation">
-                {showSection ? (
-                  <p
-                    role="presentation"
-                    className={cn(
-                      "mb-2 text-overline text-faint uppercase",
-                      position > 0 && "mt-5",
-                    )}
-                  >
-                    {TESTAMENT_LABEL[book.testament]}
-                  </p>
-                ) : null}
-                <div
-                  id={`${listId}-${book.id}`}
-                  role="option"
-                  aria-selected={book.id === selectedBookId}
-                  aria-label={`${book.name}, ${book.chapterCount} chapters`}
-                  tabIndex={-1}
-                  onClick={() => choose(book)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") choose(book);
-                  }}
-                  onMouseMove={() => setActive(position)}
-                  className={cn(
-                    "flex min-h-11 cursor-pointer items-center rounded-sm px-3 text-body",
-                    book === activeBook && "bg-muted",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex-1",
-                      book.id === selectedBookId && "text-primary",
-                    )}
-                  >
-                    {book.name}
-                  </span>
-                  <span className="text-footnote text-faint">
-                    {book.chapterCount}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <BookList
+        id={listId}
+        books={results}
+        query={query}
+        activeId={activeBook?.id ?? null}
+        selectedBookId={selectedBookId}
+        onChoose={choose}
+        onHover={setActive}
+      />
     </PickerDialog>
   );
 }
