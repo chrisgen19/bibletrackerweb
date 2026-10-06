@@ -7,13 +7,13 @@ services:
     environment:
       POSTGRES_USER: bibletracker
       POSTGRES_PASSWORD: bibletracker
-      POSTGRES_DB: bibletracker
+      POSTGRES_DB: bibletrackerweb
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
       - db-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bibletracker -d bibletracker"]
+      test: ["CMD-SHELL", "pg_isready -U bibletracker -d bibletrackerweb"]
       interval: 5s
       timeout: 3s
       retries: 10
