@@ -1,8 +1,9 @@
 // Ported from bibletrackerapp src/features/reading-plan/data/__tests__/
-// reading-plan-repository.test.ts. Same cases and names; each test gets its own reader
-// instead of a fresh in-memory SQLite database.
+// reading-plan-repository.test.ts. Same cases and names, plus one web-only case (marked).
+// Each test gets its own reader instead of a fresh in-memory SQLite database.
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { resolvePlanForDate } from "@/features/reading-plan/domain/schedule";
 import {
   createReadingPlan,
   getActiveReadingPlan,
@@ -111,6 +112,34 @@ describe("replaceActiveReadingPlan", () => {
     // endDate before startDate: the segment governs no day at all, by design.
     expect(closed?.endDate).toBe("2026-08-08");
     expect(closed?.startDate).toBe("2026-08-09");
+  });
+
+  // Web-only case. Not a port, and pinned because "start before the active plan's
+  // start" looks like an error and was flagged as one in review (#5).
+  it("supersedes a plan that has not started yet", async () => {
+    // Onboarded with a start date of Sep 1, then moved position on Aug 24: the
+    // reading-plan screen always starts the new segment today. Rejecting it would
+    // stop the reader changing position until the original start date arrived.
+    const future = await createReadingPlan(
+      user,
+      draft({ startDate: "2026-09-01" }),
+    );
+    const now = await replaceActiveReadingPlan(
+      user,
+      draft({ startDate: "2026-08-24", startBookId: "MAT" }),
+    );
+
+    const plans = await getAllReadingPlans(user);
+    // Like the same-day case, the plan that never began governs no day at all.
+    expect(plans.find((p) => p.id === future.id)).toMatchObject({
+      isActive: false,
+      startDate: "2026-09-01",
+      endDate: "2026-08-23",
+    });
+    for (const day of ["2026-08-24", "2026-09-01", "2026-12-31"]) {
+      expect(resolvePlanForDate(plans, day)?.id).toBe(now.id);
+    }
+    expect((await getActiveReadingPlan(user))?.id).toBe(now.id);
   });
 
   it("carries chapters per day onto the new segment", async () => {
