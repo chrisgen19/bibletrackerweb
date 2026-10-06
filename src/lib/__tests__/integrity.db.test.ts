@@ -12,6 +12,7 @@ import {
   replaceActiveReadingPlan,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { waitForReaderLockWaiter } from "@/test/db-locks";
 import { createTestUser, makeDraft, replacePlan } from "@/test/factories";
 
 let user: string;
@@ -64,8 +65,8 @@ describe("two devices changing the position at once", () => {
       user,
       makeDraft({ startDate: "2026-08-09", startBookId: "MRK" }),
     );
-    // Give device B time to reach the database and block behind device A.
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Only commit once device B is blocked behind device A's lock.
+    await waitForReaderLockWaiter(user);
     commitDeviceA();
     await deviceA;
     const fromDeviceB = await deviceB;
