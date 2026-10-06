@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getTimeZone } from "@/lib/dal";
+import { getAllReadingPlans, getTimeZone } from "@/lib/dal";
+import { db } from "@/lib/db";
 import { createTestUser, makeDraft } from "@/test/factories";
 import { createId } from "@/utils/id";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -24,6 +25,19 @@ let user: string;
 beforeEach(async () => {
   user = await createTestUser();
 });
+
+/**
+ * Resolves once another session is blocked waiting for this reader's advisory lock. A
+ * bigint key shows in pg_locks as its high and low 32 bits (classid, objid), objsubid 1.
+ */
+async function lockWaitersFor(userId: string): Promise<number> {
+  const [row] = await db.$queryRaw<{ waiting: number }[]>`
+    SELECT count(*)::int AS waiting FROM pg_locks
+    WHERE locktype = 'advisory' AND NOT granted AND objsubid = 1
+      AND classid::bigint = (hashtextextended(${userId}, 0) >> 32) & 4294967295
+      AND objid::bigint = hashtextextended(${userId}, 0) & 4294967295`;
+  return row?.waiting ?? 0;
+}
 
 function snapshotOf(result: ReadingResult) {
   if (!result.ok) throw new Error(`Expected success, got ${result.error}`);
@@ -91,6 +105,50 @@ describe("changePlanFor", () => {
         timeZone: TZ,
       }),
     ).toEqual({ ok: false, error: "no-plan" });
+  });
+
+  // Review on #7 (Codex): another device resets progress while this one changes its
+  // position. In either order the reader ends with no plan; the change must not bring one
+  // back. Deterministic version: the reset holds the reader's lock with its deletes done
+  // but not committed, the change starts, then the reset commits.
+  it("does not bring a plan back when a reset commits while the change waits", async () => {
+    await startPlanFor(user, { draft: makeDraft({ startDate: "2026-01-01" }) });
+
+    let commitReset = () => {};
+    const committed = new Promise<void>((resolve) => {
+      commitReset = resolve;
+    });
+    let markResetReady = () => {};
+    const resetReady = new Promise<void>((resolve) => {
+      markResetReady = resolve;
+    });
+    const reset = db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`;
+        await tx.readingCompletion.deleteMany({ where: { userId: user } });
+        await tx.readingPlan.deleteMany({ where: { userId: user } });
+        markResetReady();
+        await committed;
+      },
+      { timeout: 15_000 },
+    );
+
+    await resetReady;
+    const change = changePlanFor(user, {
+      draft: makeDraft({ startDate: today(), startBookId: "MAT" }),
+      timeZone: TZ,
+    });
+    // Only commit once the change is blocked on the lock, so it really did start (and,
+    // before the fix, run its unlocked check) while the reset was still open.
+    await vi.waitFor(async () => expect(await lockWaitersFor(user)).toBe(1), {
+      timeout: 5_000,
+      interval: 20,
+    });
+    commitReset();
+    await reset;
+
+    expect(await change).toEqual({ ok: false, error: "no-plan" });
+    expect(await getAllReadingPlans(user)).toEqual([]);
   });
 });
 

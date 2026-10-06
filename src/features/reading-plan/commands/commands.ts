@@ -83,9 +83,12 @@ export async function changePlanFor(
 
   const today = getTodayDateKeyInZone(timeZone);
   if (compareDateKeys(draft.startDate, today) < 0) return fail("start-in-past");
-  if ((await getActiveReadingPlan(userId)) === null) return fail("no-plan");
-
-  await replaceActiveReadingPlan(userId, draft);
+  // Checked by the DAL under the reader's lock, not here: a reset on another device
+  // could otherwise commit between the check and the write, and the change would bring
+  // a plan back.
+  if ((await replaceActiveReadingPlan(userId, draft)) === null) {
+    return fail("no-plan");
+  }
   return withSnapshot(userId);
 }
 

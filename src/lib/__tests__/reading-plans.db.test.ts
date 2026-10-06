@@ -13,7 +13,11 @@ import {
   replaceActiveReadingPlan,
   resetAllProgress,
 } from "@/lib/dal";
-import { createTestUser, makeDraft as draft } from "@/test/factories";
+import {
+  createTestUser,
+  makeDraft as draft,
+  replacePlan,
+} from "@/test/factories";
 
 let user: string;
 
@@ -46,7 +50,7 @@ describe("replaceActiveReadingPlan", () => {
       user,
       draft({ startDate: "2026-07-20" }),
     );
-    const second = await replaceActiveReadingPlan(
+    const second = await replacePlan(
       user,
       draft({ startDate: "2026-08-09", startBookId: "MAT" }),
     );
@@ -62,6 +66,14 @@ describe("replaceActiveReadingPlan", () => {
     expect(second.isActive).toBe(true);
     expect(second.endDate).toBeNull();
     expect((await getActiveReadingPlan(user))?.id).toBe(second.id);
+  });
+
+  it("writes nothing when there is no open segment to replace", async () => {
+    // Another device reset progress: the change must not start a plan of its own.
+    expect(
+      await replaceActiveReadingPlan(user, draft({ startDate: "2026-08-09" })),
+    ).toBeNull();
+    expect(await getAllReadingPlans(user)).toEqual([]);
   });
 
   it("leaves exactly one active segment", async () => {
@@ -124,7 +136,7 @@ describe("replaceActiveReadingPlan", () => {
       user,
       draft({ startDate: "2026-09-01" }),
     );
-    const now = await replaceActiveReadingPlan(
+    const now = await replacePlan(
       user,
       draft({ startDate: "2026-08-24", startBookId: "MAT" }),
     );
@@ -144,7 +156,7 @@ describe("replaceActiveReadingPlan", () => {
 
   it("carries chapters per day onto the new segment", async () => {
     await createReadingPlan(user, draft());
-    const next = await replaceActiveReadingPlan(
+    const next = await replacePlan(
       user,
       draft({ startDate: "2026-08-09", chaptersPerDay: 3 }),
     );

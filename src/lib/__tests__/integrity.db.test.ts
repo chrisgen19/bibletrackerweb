@@ -12,7 +12,7 @@ import {
   replaceActiveReadingPlan,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { createTestUser, makeDraft } from "@/test/factories";
+import { createTestUser, makeDraft, replacePlan } from "@/test/factories";
 
 let user: string;
 
@@ -60,7 +60,7 @@ describe("two devices changing the position at once", () => {
     );
 
     await deviceAReady;
-    const deviceB = replaceActiveReadingPlan(
+    const deviceB = replacePlan(
       user,
       makeDraft({ startDate: "2026-08-09", startBookId: "MRK" }),
     );
@@ -85,11 +85,11 @@ describe("two devices changing the position at once", () => {
     await createReadingPlan(user, makeDraft());
 
     const results = await Promise.all([
-      replaceActiveReadingPlan(
+      replacePlan(
         user,
         makeDraft({ startDate: "2026-08-09", startBookId: "MAT" }),
       ),
-      replaceActiveReadingPlan(
+      replacePlan(
         user,
         makeDraft({ startDate: "2026-08-09", startBookId: "MRK" }),
       ),
@@ -174,7 +174,7 @@ describe("getReadingSnapshot", () => {
       localDate: "2026-07-21",
       chapters: [{ bookId: "GEN", chapter: 2 }],
     });
-    const second = await replaceActiveReadingPlan(
+    const second = await replacePlan(
       user,
       makeDraft({ startDate: "2026-08-09" }),
     );
