@@ -24,7 +24,8 @@ export function DaySheet({ children }: { children: ReactNode }) {
         aria-describedby={undefined}
         className={cn(
           "gap-0 overflow-y-auto bg-card px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]",
-          wide ? "w-full sm:max-w-md" : "max-h-[92dvh] rounded-t-3xl",
+          // From the right it keeps the sheet's own width (max-w-sm, 384px).
+          !wide && "max-h-[92dvh] rounded-t-3xl",
         )}
       >
         {wide ? null : (
