@@ -5,19 +5,34 @@ export function firstParam(
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** An origin nothing runs on, used only to see where a path would resolve. */
+const PROBE_ORIGIN = "http://next-path.invalid";
+
 /**
  * Where to send the reader after signing in, from a `?next=` parameter.
  *
- * Only same-site paths are allowed. Anything else (an absolute URL, a protocol-relative
- * `//host`, a backslash that some browsers treat as a slash) falls back to the home page,
- * so the parameter cannot be used to bounce a reader to another site.
+ * Only same-site paths are allowed; anything else falls back to the home page, so the
+ * parameter cannot bounce a reader to another site. The path is resolved the way a
+ * browser would and must stay on this site, and the normalised result is returned
+ * rather than the raw input.
  */
 export function safeNextPath(next: string | null | undefined): string {
   if (typeof next !== "string" || next.length === 0) return "/";
-  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+  // Control characters first: URL parsing silently drops tab, CR and LF, so
+  // "/\t/evil.example" would otherwise pass the checks below and become
+  // "//evil.example". A backslash is treated as a slash by browsers.
+  if (/[\p{Cc}\\]/u.test(next)) return "/";
+  if (!next.startsWith("/") || next.startsWith("//")) return "/";
+
+  let url: URL;
+  try {
+    url = new URL(next, PROBE_ORIGIN);
+  } catch {
     return "/";
   }
+  if (url.origin !== PROBE_ORIGIN) return "/";
+
   // Never send a signed-in reader back to the auth screens.
-  if (/^\/(sign-in|sign-up)(\/|\?|$)/.test(next)) return "/";
-  return next;
+  if (/^\/(sign-in|sign-up)(\/|$)/.test(url.pathname)) return "/";
+  return `${url.pathname}${url.search}${url.hash}`;
 }

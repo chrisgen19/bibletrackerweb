@@ -26,6 +26,33 @@ describe("safeNextPath", () => {
     expect(safeNextPath(input)).toBe("/");
   });
 
+  // Review on #6: URL parsing drops tab, CR and LF, so these resolve to
+  // "//evil.example". Reproduced in Chrome before the fix, on both the server redirect
+  // and the client-side navigation after signing in.
+  it.each([
+    "/\t/evil.example",
+    "/\n/evil.example",
+    "/\r/evil.example",
+    "/\t\t/evil.example/x?y=1",
+    "/\u0000/evil.example",
+    "/\u007f/evil.example",
+  ])("sends %j home: control characters can hide a second slash", (input) => {
+    expect(safeNextPath(input)).toBe("/");
+  });
+
+  it("keeps percent-encoded characters on this site", () => {
+    // Encoded, the tab stays part of the path instead of being dropped.
+    expect(safeNextPath("/%09/evil.example")).toBe("/%09/evil.example");
+    expect(
+      new URL(safeNextPath("/%09/evil.example"), "https://app.test").host,
+    ).toBe("app.test");
+  });
+
+  it("returns the normalised path, not the raw input", () => {
+    expect(safeNextPath("/a/../day/2026-08-01")).toBe("/day/2026-08-01");
+    expect(safeNextPath("/settings#appearance")).toBe("/settings#appearance");
+  });
+
   it.each([
     "/sign-in",
     "/sign-up",
