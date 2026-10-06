@@ -14,16 +14,29 @@ export interface Command {
   readonly run: () => Promise<ReadingResult>;
 }
 
+const READING_WRITE_KEY = ["reading-write"] as const;
+
+/** The writes still waiting for an answer, oldest first, apart from `except`. */
+function waitingWrites(queryClient: QueryClient, except: Command): Command[] {
+  return queryClient
+    .getMutationCache()
+    .findAll({ mutationKey: READING_WRITE_KEY, status: "pending" })
+    .map((mutation) => mutation.state.variables as Command)
+    .filter((command) => command !== except);
+}
+
 /**
  * How every reading write runs, kept out of the component so it can be tested with
- * TanStack Query alone.
+ * TanStack Query alone. Create it once per client: the writes share what the server
+ * last sent.
  *
  * Writes run one at a time (`scope`), but each shows on screen as soon as it is made.
- * When the server refuses one, the screen is not rolled back to the snapshot from before
- * it: later writes may have been applied on top since, and the server may have moved on
- * (another device reset progress). It is reconciled with the server instead. If another
- * write is still waiting, its answer carries the server's whole snapshot, which replaces
- * everything; if this was the last one, the snapshot is refetched.
+ * What is shown is always the server's last snapshot with the writes still waiting
+ * applied on top, in order. Each answer rebuilds it from that: from the new snapshot if
+ * the server stored the write, from the previous one if it refused it. So an answer
+ * never hides a later write, and a refused change disappears at once without undoing
+ * anything else. A refusal with nothing else waiting also refetches the snapshot, since
+ * the server may have moved on (another device reset progress).
  *
  * @param report receives the error to show, or null when a new write starts.
  */
@@ -31,7 +44,11 @@ export function readingWriteOptions(
   queryClient: QueryClient,
   report: (error: ReadingErrorCode | null) => void,
 ): MutationOptions<ReadingResult, Error, Command> {
+  // The server's last snapshot. While no write is waiting, it is exactly what is shown.
+  let fromServer: ReadingSnapshot | undefined;
+
   return {
+    mutationKey: READING_WRITE_KEY,
     scope: { id: "reading-writes" },
     mutationFn: async (command) => {
       try {
@@ -41,6 +58,10 @@ export function readingWriteOptions(
       }
     },
     onMutate: async (command) => {
+      // Checked before the await: writes made together (a double click) both pause there.
+      if (waitingWrites(queryClient, command).length === 0) {
+        fromServer = queryClient.getQueryData(READING_SNAPSHOT_KEY);
+      }
       await queryClient.cancelQueries({ queryKey: READING_SNAPSHOT_KEY });
       const current =
         queryClient.getQueryData<ReadingSnapshot>(READING_SNAPSHOT_KEY);
@@ -52,14 +73,18 @@ export function readingWriteOptions(
       }
       report(null);
     },
-    onSuccess: async (result) => {
-      if (result.ok) {
-        queryClient.setQueryData(READING_SNAPSHOT_KEY, result.snapshot);
-        return;
+    onSuccess: async (result, command) => {
+      // TanStack still counts this write as pending here, so it is left out by hand.
+      const waiting = waitingWrites(queryClient, command);
+      if (result.ok) fromServer = result.snapshot;
+      else report(result.error);
+      if (fromServer !== undefined) {
+        queryClient.setQueryData(
+          READING_SNAPSHOT_KEY,
+          waiting.reduce((shown, next) => next.optimistic(shown), fromServer),
+        );
       }
-      report(result.error);
-      // This write still counts as in flight during its own onSuccess.
-      if (queryClient.isMutating() <= 1) {
+      if (!result.ok && waiting.length === 0) {
         await queryClient.invalidateQueries({ queryKey: READING_SNAPSHOT_KEY });
       }
     },
