@@ -14,6 +14,7 @@ interface IconButtonProps {
   disabled?: boolean;
   variant?: "plain" | "filled";
   className?: string;
+  testId?: string;
 }
 
 /** A round 44px icon control, the iOS app's IconButton. */
@@ -25,6 +26,7 @@ export function IconButton({
   disabled,
   variant = "filled",
   className,
+  testId,
 }: IconButtonProps) {
   const classes = cn(
     "size-11 rounded-full text-muted-foreground",
@@ -38,7 +40,7 @@ export function IconButton({
   if (href !== undefined) {
     return (
       <Button asChild variant="ghost" className={classes}>
-        <Link href={href} aria-label={label}>
+        <Link href={href} aria-label={label} data-testid={testId}>
           {icon}
         </Link>
       </Button>
@@ -51,6 +53,7 @@ export function IconButton({
       onClick={onClick}
       disabled={disabled}
       className={classes}
+      data-testid={testId}
     >
       {icon}
     </Button>

@@ -11,6 +11,7 @@ interface FieldRowProps {
   last?: boolean;
   /** Marks a row whose picker is open, for assistive technology. */
   expanded?: boolean;
+  testId?: string;
 }
 
 /** iOS-style disclosure row used by the plan editors and settings. */
@@ -21,6 +22,7 @@ export function FieldRow({
   onClick,
   last = false,
   expanded,
+  testId,
 }: FieldRowProps) {
   const className =
     "relative flex min-h-[50px] w-full items-center gap-2 px-4 text-left text-body outline-none transition-colors hover:bg-muted focus-visible:bg-muted active:bg-pressed";
@@ -43,7 +45,7 @@ export function FieldRow({
 
   if (href !== undefined) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href} className={className} data-testid={testId}>
         {content}
       </Link>
     );
@@ -54,6 +56,7 @@ export function FieldRow({
       onClick={onClick}
       aria-expanded={expanded}
       className={className}
+      data-testid={testId}
     >
       {content}
     </button>

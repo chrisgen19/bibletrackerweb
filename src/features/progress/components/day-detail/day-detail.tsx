@@ -58,6 +58,7 @@ export function DayDetail({
           value={tab}
           onChange={setTab}
           label="What to log for this day"
+          testIdPrefix="day-tab"
           className="mt-5"
         />
       )}

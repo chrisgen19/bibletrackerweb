@@ -63,6 +63,7 @@ export function RecordedBlock({
                 variant="plain"
                 label={`Remove ${describeRow(row, index)}`}
                 onClick={() => onUndoEntry(row.id)}
+                testId={`remove-entry-${row.id}`}
               />
             </li>
           ))}

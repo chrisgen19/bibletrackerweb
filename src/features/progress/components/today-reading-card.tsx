@@ -101,7 +101,9 @@ export function TodayReadingCard({
       <div className="mt-5">
         {isPartial ? (
           <Button asChild size="large" className="w-full">
-            <Link href={detailHref}>Continue Reading</Link>
+            <Link href={detailHref} data-testid="continue-reading">
+              Continue Reading
+            </Link>
           </Button>
         ) : isCompleted ? (
           <div className="animate-in fade-in duration-[240ms] motion-reduce:animate-none">
@@ -112,13 +114,19 @@ export function TodayReadingCard({
             <Link
               href={detailHref}
               aria-label="View today's reading details"
+              data-testid="open-today-detail"
               className="mt-2 block rounded-sm py-3 text-center text-footnote text-faint outline-none hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               View details
             </Link>
           </div>
         ) : (
-          <Button size="large" className="w-full" onClick={onMarkRead}>
+          <Button
+            size="large"
+            className="w-full"
+            onClick={onMarkRead}
+            data-testid="mark-today-read"
+          >
             Mark as Read
           </Button>
         )}

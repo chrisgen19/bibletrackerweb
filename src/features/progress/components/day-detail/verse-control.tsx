@@ -25,6 +25,9 @@ interface VerseControlProps {
   getCompletedOnFor: (reference: BibleReference) => DateKey | null;
   /** The day being viewed, to tell "recorded here" from "read on another day". */
   viewedDate: DateKey;
+  /** The iOS testIDs, so its ported tests find the same controls. */
+  fieldTestId: string;
+  submitTestId: string;
 }
 
 /**
@@ -42,6 +45,8 @@ export function VerseControl({
   onSubmit,
   getCompletedOnFor,
   viewedDate,
+  fieldTestId,
+  submitTestId,
 }: VerseControlProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toVerse, setToVerse] = useState<number | null>(null);
@@ -67,6 +72,7 @@ export function VerseControl({
             onClick={() => setPickerOpen(true)}
             expanded={pickerOpen}
             last
+            testId={fieldTestId}
           />
         </Panel>
         {copy.hint === null ? null : (
@@ -75,7 +81,10 @@ export function VerseControl({
       </div>
 
       {copy.alreadyRead === null ? null : (
-        <p className="mb-3 rounded-xl bg-primary-soft p-4 text-footnote text-primary">
+        <p
+          className="mb-3 rounded-xl bg-primary-soft p-4 text-footnote text-primary"
+          data-testid={`${submitTestId}-already-read`}
+        >
           {copy.alreadyRead}
         </p>
       )}
@@ -87,6 +96,7 @@ export function VerseControl({
         onClick={() => {
           if (onSubmit(selection.span)) setToVerse(null);
         }}
+        data-testid={submitTestId}
       >
         <span className="truncate">{copy.submitLabel}</span>
       </Button>

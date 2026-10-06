@@ -15,6 +15,8 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   /** Announced as the group's purpose, e.g. "Appearance". */
   label: string;
+  /** Gives each segment a test id: `${prefix}-${value}`. */
+  testIdPrefix?: string;
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   label,
+  testIdPrefix,
   className,
 }: SegmentedControlProps<T>) {
   return (
@@ -44,6 +47,11 @@ export function SegmentedControl<T extends string>({
         <RadioGroup.Item
           key={option.value}
           value={option.value}
+          data-testid={
+            testIdPrefix === undefined
+              ? undefined
+              : `${testIdPrefix}-${option.value}`
+          }
           className="flex min-h-[38px] flex-1 items-center justify-center truncate rounded-sm px-2 text-callout text-muted-foreground outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=checked]:bg-card data-[state=checked]:font-semibold data-[state=checked]:text-foreground data-[state=checked]:shadow-card"
         >
           {option.label}

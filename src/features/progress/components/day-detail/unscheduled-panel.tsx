@@ -65,6 +65,8 @@ export function UnscheduledPanel(props: UnscheduledPanelProps) {
             onSubmit={(span) => props.onComplete([currentPosition], span)}
             getCompletedOnFor={props.getCompletedOnFor}
             viewedDate={day.date}
+            fieldTestId="catch-up-field-to-verse"
+            submitTestId="catch-up-submit"
           />
         </div>
       ) : (

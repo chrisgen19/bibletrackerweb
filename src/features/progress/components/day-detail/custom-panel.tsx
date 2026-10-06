@@ -72,12 +72,14 @@ export function CustomPanel(props: CustomPanelProps) {
           label="Book"
           value={book?.name ?? reference.bookId}
           onClick={() => setPicker("book")}
+          testId="custom-field-book"
         />
         <FieldRow
           label="Chapter"
           value={String(reference.chapter)}
           onClick={() => setPicker("chapter")}
           last
+          testId="custom-field-chapter"
         />
       </div>
 
@@ -93,7 +95,12 @@ export function CustomPanel(props: CustomPanelProps) {
         {progress === null ? (
           // Without verse counts there is no span to record. Sending one anyway would
           // write 1-1 and claim a whole chapter had been read from a single verse.
-          <Button size="large" className="w-full" onClick={() => handleLog()}>
+          <Button
+            size="large"
+            className="w-full"
+            onClick={() => handleLog()}
+            data-testid="log-custom-reading"
+          >
             <span className="truncate">{`Log ${formatReference(reference, index)} as Read`}</span>
           </Button>
         ) : (
@@ -106,6 +113,8 @@ export function CustomPanel(props: CustomPanelProps) {
             onSubmit={(span) => handleLog(span)}
             getCompletedOnFor={props.getCompletedOnFor}
             viewedDate={day.date}
+            fieldTestId="custom-field-to-verse"
+            submitTestId="log-custom-reading"
           />
         )}
       </div>

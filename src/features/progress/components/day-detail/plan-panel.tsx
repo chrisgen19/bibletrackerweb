@@ -81,12 +81,15 @@ export function PlanPanel(props: PlanPanelProps) {
             onSubmit={(span) => onComplete([action.tracked], span)}
             getCompletedOnFor={props.getCompletedOnFor}
             viewedDate={day.date}
+            fieldTestId="field-to-verse"
+            submitTestId="mark-day-read"
           />
         ) : action.kind === "mark" ? (
           <Button
             size="large"
             className="w-full"
             onClick={() => onComplete(action.chapters, undefined)}
+            data-testid="mark-day-read"
           >
             <span className="truncate">{`Mark ${formatReferenceSpan(action.chapters, index)} as Read`}</span>
           </Button>
