@@ -16,7 +16,8 @@ import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
  */
 export default async function AppLayout({
   children,
-}: Readonly<{ children: ReactNode }>) {
+  sheet,
+}: Readonly<{ children: ReactNode; sheet: ReactNode }>) {
   const user = await requireUser();
   const [snapshot, zone] = await Promise.all([
     getReadingSnapshot(user.id),
@@ -32,6 +33,8 @@ export default async function AppLayout({
         initialTimeZoneFromDevice={zone.fromDevice}
       >
         {children}
+        {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
+        {sheet}
         <WriteStatus />
       </ReadingDataProvider>
     </QueryProvider>

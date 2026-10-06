@@ -26,8 +26,11 @@ export function FieldRow({
     "relative flex min-h-[50px] w-full items-center gap-2 px-4 text-left text-body outline-none transition-colors hover:bg-muted focus-visible:bg-muted active:bg-pressed";
   const content = (
     <>
-      <span className="flex-1">{label}</span>
-      <span className="truncate text-muted-foreground">{value}</span>
+      {/* The label stays on one line; a long value wraps beside it rather than lose words. */}
+      <span className="flex-1 whitespace-nowrap">{label}</span>
+      <span className="min-w-0 py-2 text-right text-muted-foreground">
+        {value}
+      </span>
       <ChevronRight className="size-3.5 shrink-0 text-faint" aria-hidden />
       {last ? null : (
         <span
