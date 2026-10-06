@@ -132,6 +132,17 @@ export function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+/**
+ * True when a write referenced a row that is gone, such as a reading for a plan that
+ * another device's reset deleted after the plan was looked up.
+ */
+export function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2003"
+  );
+}
+
 // Reading plans (bibletrackerapp: reading-plan-repository.ts)
 
 /** The open-ended segment, or `null` before onboarding. */

@@ -7,6 +7,7 @@ import {
   getActiveReadingPlan,
   getAllReadingPlans,
   getReadingSnapshot,
+  isForeignKeyViolation,
   isUniqueViolation,
   markReadingComplete,
   removeCompletionById,
@@ -127,13 +128,19 @@ export async function completeReadingFor(
     if (verses.to > verseCount) return fail("verses-out-of-range");
   }
 
-  await markReadingComplete(userId, {
-    readingPlanId: plan.id,
-    localDate: date,
-    chapters,
-    verses,
-    ids,
-  });
+  try {
+    await markReadingComplete(userId, {
+      readingPlanId: plan.id,
+      localDate: date,
+      chapters,
+      verses,
+      ids,
+    });
+  } catch (error) {
+    // Another device reset progress after the plan was looked up, so the plan is gone.
+    if (isForeignKeyViolation(error)) return fail("no-plan");
+    throw error;
+  }
   return withSnapshot(userId);
 }
 
