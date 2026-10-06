@@ -98,6 +98,8 @@ interface ReadingDataProviderProps {
   initialSnapshot: ReadingSnapshot;
   initialToday: DateKey;
   initialTimeZone: string;
+  /** Whether `initialTimeZone` came from this device's own cookie. */
+  initialTimeZoneFromDevice: boolean;
   children: ReactNode;
 }
 
@@ -117,10 +119,15 @@ export function ReadingDataProvider({
   initialSnapshot,
   initialToday,
   initialTimeZone,
+  initialTimeZoneFromDevice,
   children,
 }: ReadingDataProviderProps) {
   const queryClient = useQueryClient();
-  const { today, timeZone } = useLocalToday(initialToday, initialTimeZone);
+  const { today, timeZone } = useLocalToday(
+    initialToday,
+    initialTimeZone,
+    initialTimeZoneFromDevice,
+  );
   const [errorCode, setErrorCode] = useState<ReadingErrorCode | null>(null);
 
   const { data: snapshot } = useQuery({

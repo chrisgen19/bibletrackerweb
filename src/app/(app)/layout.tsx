@@ -18,7 +18,7 @@ export default async function AppLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const user = await requireUser();
-  const [snapshot, timeZone] = await Promise.all([
+  const [snapshot, zone] = await Promise.all([
     getReadingSnapshot(user.id),
     resolveReaderTimeZone(user.id),
   ]);
@@ -27,8 +27,9 @@ export default async function AppLayout({
     <QueryProvider>
       <ReadingDataProvider
         initialSnapshot={snapshot}
-        initialToday={getTodayDateKeyInZone(timeZone)}
-        initialTimeZone={timeZone}
+        initialToday={getTodayDateKeyInZone(zone.timeZone)}
+        initialTimeZone={zone.timeZone}
+        initialTimeZoneFromDevice={zone.fromDevice}
       >
         <div className="flex flex-1 flex-col">
           <header className="flex items-center justify-between gap-4 border-b px-4 py-3">

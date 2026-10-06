@@ -15,14 +15,24 @@ export const TIME_ZONE_COOKIE = "tz";
 /** About 400 days, the longest lifetime browsers allow for a cookie. */
 export const TIME_ZONE_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 
+export interface ReaderTimeZone {
+  readonly timeZone: string;
+  /** True when this device's own cookie supplied it, not the account-wide fallback. */
+  readonly fromDevice: boolean;
+}
+
 /**
  * The zone to compute "today" in when rendering on the server: this device's cookie, then
  * the reader's last stored zone, then UTC. The browser corrects it after loading if it
- * differs, so a wrong guess only lasts until hydration.
+ * differs, so a wrong guess only lasts until hydration. `fromDevice` tells the browser
+ * whether it still needs to set its own cookie.
  */
-export async function resolveReaderTimeZone(userId: string): Promise<string> {
+export async function resolveReaderTimeZone(
+  userId: string,
+): Promise<ReaderTimeZone> {
   const fromCookie = (await cookies()).get(TIME_ZONE_COOKIE)?.value;
-  if (fromCookie !== undefined && isValidTimeZone(fromCookie))
-    return fromCookie;
-  return (await getTimeZone(userId)) ?? "UTC";
+  if (fromCookie !== undefined && isValidTimeZone(fromCookie)) {
+    return { timeZone: fromCookie, fromDevice: true };
+  }
+  return { timeZone: (await getTimeZone(userId)) ?? "UTC", fromDevice: false };
 }
