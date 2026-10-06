@@ -45,7 +45,7 @@ The app runs on **3100**: Google's OAuth redirect URI has to name a fixed port.
 | `pnpm verify` | Lint + type-check + tests in three timezones. Needs `pnpm db:up`. Run before every commit. |
 | `pnpm lint` / `pnpm lint:fix` | Biome check (and apply safe fixes) |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` / `pnpm test:watch` | Vitest, unit and database tests |
+| `pnpm test` / `pnpm test:watch` | Vitest: unit, component and database tests |
 | `pnpm test:unit` | Unit tests only, no database needed |
 | `pnpm test:tz` | Every test under UTC, Asia/Manila and America/Los_Angeles |
 | `pnpm db:up` / `pnpm db:down` | Start or stop the local Postgres container |
@@ -56,9 +56,13 @@ The app runs on **3100**: Google's OAuth redirect URI has to name a fixed port.
 
 ## Testing
 
-Two Vitest projects:
+Three Vitest projects:
 
 - **unit**: pure logic, including the domain suites ported unedited from bibletrackerapp.
+- **dom** (`*.dom.test.tsx`): components in jsdom with React Testing Library.
+  bibletrackerapp's component tests (day detail, today card, calendar, month pager) are
+  ported here nearly line for line; the components carry the iOS testIDs as
+  `data-testid`. `next/navigation` and `next/link` are mocked in `src/test/dom-setup.ts`.
 - **db** (`*.db.test.ts`): the data layer against real Postgres. The test database is the
   dev database's name plus `_test`, created and migrated with `prisma migrate deploy`
   automatically. Setup refuses any database whose name does not end in `_test`, and every
@@ -111,12 +115,29 @@ The reading logic is bibletrackerapp's, unchanged; the web adds a server round t
   removes the right row.
 - **Offline**, a write waits instead of failing: TanStack Query pauses it and Next.js
   replays the Server Action when the connection returns, so it stays on screen until it is
-  stored. A write the server refuses is rolled back with a message.
+  stored. When the server refuses a write, the screen is rebuilt from the server's last
+  snapshot with any writes still waiting applied on top, and the reason is shown.
 - **Other devices**: the snapshot is refetched (`GET /api/reading/snapshot`) whenever the
   tab regains focus, unless a write is still pending.
 - **"Today" belongs to the device**, as on iOS. The server renders with the device's `tz`
   cookie (then the stored zone, then UTC); the browser corrects it after loading, re-checks
   on focus and at local midnight, and tells the server when its zone changes.
+
+## Screens
+
+The screens are bibletrackerapp's, with its copy, on the same design tokens.
+
+- **Theme**: the iOS palette, type ramp and radii live in `src/app/globals.css` as CSS
+  variables. Appearance (system, light, dark) is stored per account and in an
+  `appearance` cookie per device; the root layout renders it onto `<html>`, and "system"
+  follows the device through a media query, so the first paint is right without a script.
+  Use `cn` from `@/lib/utils`, which knows the custom text sizes.
+- **Day sheet**: opening a day from inside the app is an intercepted route
+  (`src/app/(app)/@sheet/(.)day/[date]`) shown as a sheet, from the bottom on a phone and
+  the right from 768px. Loading `/day/<date>` directly renders it as a page.
+- **Navigating after a write** waits for the server's answer (`useWritesSettled`):
+  starting a plan, resetting progress and the redirects to onboarding. The server renders
+  the next page, so it must already have the write.
 
 ## Database
 
