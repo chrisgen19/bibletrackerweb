@@ -24,6 +24,8 @@ export function FieldRow({
   expanded,
   testId,
 }: FieldRowProps) {
+  // Read as "Book, Genesis", as on iOS: the two spans alone would run together.
+  const name = `${label}, ${value}`;
   const className =
     "relative flex min-h-[50px] w-full items-center gap-2 px-4 text-left text-body outline-none transition-colors hover:bg-muted focus-visible:bg-muted active:bg-pressed";
   const content = (
@@ -45,7 +47,12 @@ export function FieldRow({
 
   if (href !== undefined) {
     return (
-      <Link href={href} className={className} data-testid={testId}>
+      <Link
+        href={href}
+        aria-label={name}
+        className={className}
+        data-testid={testId}
+      >
         {content}
       </Link>
     );
@@ -54,6 +61,7 @@ export function FieldRow({
     <button
       type="button"
       onClick={onClick}
+      aria-label={name}
       aria-expanded={expanded}
       className={className}
       data-testid={testId}

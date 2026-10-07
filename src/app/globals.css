@@ -168,6 +168,25 @@
   }
 }
 
+/*
+ * Reduced motion everywhere, including the dialog and sheet animations that come with
+ * shadcn: things still appear and disappear, just without moving. Durations stay above
+ * zero so animationend and transitionend still fire for code that waits on them. Being
+ * outside any layer is what lets it win over Tailwind's utilities, which all sit in one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    transition-delay: 0ms;
+    scroll-behavior: auto;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -54,7 +54,7 @@ export function MonthPager({
     <section
       ref={viewport}
       aria-roledescription="calendar"
-      aria-label={`${monthWindow.current.calendar.title}. Use the left and right arrow keys to change month.`}
+      aria-label={`Monthly reading calendar, ${monthWindow.current.calendar.title}. Use the left and right arrow keys to change month.`}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so the arrow keys can change month
       tabIndex={0}
       onKeyDown={handleKeyDown}
