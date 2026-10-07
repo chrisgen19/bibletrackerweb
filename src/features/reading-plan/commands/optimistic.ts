@@ -142,7 +142,8 @@ export interface OptimisticReading {
 
 /**
  * markReadingComplete: one row per chapter, the span only for a single chapter, and a row
- * whose day + chapter + span already exists is skipped (ON CONFLICT DO NOTHING).
+ * whose day + chapter + span already exists is skipped (ON CONFLICT DO NOTHING). A plan
+ * reading brings a matching extra into the plan rather than being skipped.
  */
 export function withCompletedReading(
   snapshot: ReadingSnapshot,
@@ -159,7 +160,20 @@ export function withCompletedReading(
     verses: VerseRange | null;
   }) =>
     `${row.localDate}|${row.bookId}|${row.chapter}|${row.verses?.from ?? 0}|${row.verses?.to ?? 0}`;
-  const taken = new Set(snapshot.completions.map(key));
+  const logged = new Set(
+    reading.chapters.map((chapter) =>
+      key({ ...chapter, localDate: reading.date, verses: span ?? null }),
+    ),
+  );
+  const existing =
+    reading.isExtra === true
+      ? snapshot.completions
+      : snapshot.completions.map((row) =>
+          row.isExtra === true && logged.has(key(row))
+            ? { ...row, isExtra: false }
+            : row,
+        );
+  const taken = new Set(existing.map(key));
 
   const added: ReadingCompletion[] = [];
   reading.chapters.forEach((chapter, position) => {
@@ -179,7 +193,7 @@ export function withCompletedReading(
   });
 
   // The DAL orders by day, then insertion; a stable sort keeps new rows last in their day.
-  const completions = [...snapshot.completions, ...added].sort((a, b) =>
+  const completions = [...existing, ...added].sort((a, b) =>
     compareDateKeys(a.localDate, b.localDate),
   );
   return { ...snapshot, completions };
