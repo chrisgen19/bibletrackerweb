@@ -17,6 +17,8 @@ interface RecordedBlockProps {
   isComplete: boolean;
   onUndo: () => void;
   onUndoEntry: (id: string) => void;
+  /** Moves a reading out of the plan (bibletrackerweb#18). */
+  onSetExtra: (id: string, isExtra: boolean) => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function RecordedBlock({
   isComplete,
   onUndo,
   onUndoEntry,
+  onSetExtra,
 }: RecordedBlockProps) {
   const chapters = distinctReferences(
     rows.map((row) => ({ bookId: row.bookId, chapter: row.chapter })),
@@ -51,13 +54,32 @@ export function RecordedBlock({
       </p>
 
       {/* One entry needs no list; several do, so the wrong one can go on its own. */}
-      {single ? null : (
+      {single ? (
+        <div className="mt-2 flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSetExtra(rows[0]?.id ?? "", true)}
+            data-testid="mark-extra"
+          >
+            Not part of your plan? Mark as extra
+          </Button>
+        </div>
+      ) : (
         <ul className="mt-3">
           {rows.map((row) => (
             <li key={row.id} className="flex items-center py-1">
               <span className="flex-1 text-footnote text-muted-foreground">
                 {describeRow(row, index)}
               </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSetExtra(row.id, true)}
+                data-testid={`mark-extra-${row.id}`}
+              >
+                Mark as extra
+              </Button>
               <IconButton
                 icon={X}
                 variant="plain"

@@ -14,6 +14,7 @@ import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
 import {
   changePlanFor,
   completeReadingFor,
+  setReadingExtraFor,
   startPlanFor,
   undoReadingEntryFor,
   undoReadingFor,
@@ -23,6 +24,7 @@ import {
   withCompletedReading,
   withoutDay,
   withoutEntry,
+  withReadingExtra,
   withStartedPlan,
 } from "../optimistic";
 import type { ReadingResult } from "../results";
@@ -37,9 +39,11 @@ type Step =
       date: string;
       chapters: { bookId: string; chapter: number }[];
       verses?: { from: number; to: number };
+      isExtra?: boolean;
     }
   | { kind: "undo-day"; date: string }
-  | { kind: "undo-entry"; nth: number };
+  | { kind: "undo-entry"; nth: number }
+  | { kind: "set-extra"; nth: number; isExtra: boolean };
 
 /** Strips server-assigned values: plan ids become their position, timestamps go. */
 function comparable(snapshot: ReadingSnapshot) {
@@ -123,6 +127,14 @@ async function runBoth(steps: Step[]) {
         client = withoutEntry(client, id);
         break;
       }
+      case "set-extra": {
+        const id = ids[step.nth] ?? "";
+        server = take(
+          await setReadingExtraFor(user, { id, isExtra: step.isExtra }),
+        );
+        client = withReadingExtra(client, id, step.isExtra);
+        break;
+      }
     }
     // Compared after every step, not just at the end.
     expect(comparable(client), `after step ${clock} (${step.kind})`).toEqual(
@@ -194,6 +206,37 @@ describe("optimistic snapshots match the server", () => {
       },
       { kind: "undo-entry", nth: 1 },
       { kind: "undo-day", date: "2026-01-03" },
+    ]);
+  });
+
+  // Web-only (bibletrackerweb#18).
+  it("through extra readings: logged, switched, and kept when the day is undone", async () => {
+    await runBoth([
+      { kind: "start", draft: makeDraft({ startDate: "2026-01-01" }) },
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+      },
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "REV", chapter: 5 }],
+        isExtra: true,
+      },
+      {
+        kind: "complete",
+        date: "2026-01-02",
+        chapters: [{ bookId: "NUM", chapter: 6 }],
+        verses: { from: 24, to: 26 },
+        isExtra: true,
+      },
+      { kind: "set-extra", nth: 0, isExtra: true },
+      { kind: "set-extra", nth: 0, isExtra: false },
+      { kind: "set-extra", nth: 2, isExtra: false },
+      // Undoing the day removes its plan reading and leaves the extra.
+      { kind: "undo-day", date: "2026-01-01" },
+      { kind: "undo-entry", nth: 1 },
     ]);
   });
 

@@ -98,6 +98,7 @@ export interface OptimisticReading {
   /** One per chapter, also sent to the server so both sides use the same row ids. */
   readonly ids: readonly string[];
   readonly completedAt: number;
+  readonly isExtra?: boolean;
 }
 
 /**
@@ -131,6 +132,7 @@ export function withCompletedReading(
       chapter: chapter.chapter,
       verses: span === undefined ? null : { from: span.from, to: span.to },
       completedAt: reading.completedAt,
+      isExtra: reading.isExtra ?? false,
     };
     if (taken.has(key(row))) return;
     taken.add(key(row));
@@ -144,14 +146,16 @@ export function withCompletedReading(
   return { ...snapshot, completions };
 }
 
-/** removeReadingCompletion. */
+/** removeReadingCompletion: the day's plan readings, leaving its extras. */
 export function withoutDay(
   snapshot: ReadingSnapshot,
   date: DateKey,
 ): ReadingSnapshot {
   return {
     ...snapshot,
-    completions: snapshot.completions.filter((row) => row.localDate !== date),
+    completions: snapshot.completions.filter(
+      (row) => row.localDate !== date || row.isExtra === true,
+    ),
   };
 }
 
@@ -163,6 +167,20 @@ export function withoutEntry(
   return {
     ...snapshot,
     completions: snapshot.completions.filter((row) => row.id !== id),
+  };
+}
+
+/** setReadingExtra. */
+export function withReadingExtra(
+  snapshot: ReadingSnapshot,
+  id: string,
+  isExtra: boolean,
+): ReadingSnapshot {
+  return {
+    ...snapshot,
+    completions: snapshot.completions.map((row) =>
+      row.id === id ? { ...row, isExtra } : row,
+    ),
   };
 }
 

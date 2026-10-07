@@ -147,6 +147,9 @@ model ReadingCompletion {
   /// formats as "Genesis 13-14", not "Genesis 14-13"). Postgres has no implicit order,
   /// so queries break ties on this.
   seq           BigInt   @default(autoincrement())
+  /// An extra reading (a devotional passage, a jump far from the plan): it shows on its
+  /// day and counts toward the streak, but never moves the plan or its chapter progress.
+  isExtra       Boolean  @default(false) @map("is_extra")
 
   user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan ReadingPlan @relation(fields: [readingPlanId, userId], references: [id, userId], onDelete: Cascade)

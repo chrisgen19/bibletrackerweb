@@ -7,6 +7,7 @@ import type {
   ChangePlanInput,
   CompleteReadingInput,
   SetAppearanceInput,
+  SetReadingExtraInput,
   StartPlanInput,
   SyncTimeZoneInput,
   UndoReadingEntryInput,
@@ -58,6 +59,13 @@ export async function undoReadingEntry(
 ): Promise<ReadingResult> {
   const user = await requireUser();
   return commands.undoReadingEntryFor(user.id, input);
+}
+
+export async function setReadingExtra(
+  input: SetReadingExtraInput,
+): Promise<ReadingResult> {
+  const user = await requireUser();
+  return commands.setReadingExtraFor(user.id, input);
 }
 
 export async function resetProgress(): Promise<ReadingResult> {

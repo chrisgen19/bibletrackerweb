@@ -59,6 +59,11 @@ function renderDetail(day: DayReading, handlers: Partial<DayDetailProps> = {}) {
       onChangePlan={onChangePlan}
       completions={handlers.completions ?? createCompletionLookup([])}
       rows={handlers.rows ?? rowsFor(day)}
+      // Web-only (bibletrackerweb#18): no extras, and every Custom log is a plan reading,
+      // so the ported cases run exactly as on iOS. extra-readings.dom.test.tsx covers them.
+      extraRows={handlers.extraRows ?? []}
+      onSetExtra={handlers.onSetExtra ?? vi.fn()}
+      classifyReading={handlers.classifyReading ?? (() => "plan")}
       progress={handlers.progress ?? null}
       getProgressFor={handlers.getProgressFor ?? (() => null)}
       getCompletedOnFor={handlers.getCompletedOnFor ?? (() => null)}

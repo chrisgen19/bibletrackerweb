@@ -243,10 +243,40 @@ export function continuationMessage(
   return `${formatReference(reference, index)} is logged. Would you like your reading plan to carry on from ${next}?\n\nDays you have already completed stay exactly as they are.`;
 }
 
+/**
+ * The notice after a Custom log is recorded as an extra reading (bibletrackerweb#18):
+ * what was logged, where the plan stays, and what accepting would do instead.
+ */
+export function extraReadingMessage(
+  reference: BibleReference,
+  currentPosition: BibleReference | null,
+  draft: ReadingPlanDraft | null,
+  index: CanonIndex,
+): string {
+  const logged = formatReference(reference, index);
+  const stays =
+    currentPosition === null
+      ? "Your plan stays where it is."
+      : `Your plan stays at ${formatReference(currentPosition, index)}.`;
+  const instead =
+    draft === null
+      ? "Count it toward your plan instead?"
+      : `Move your plan to carry on from ${formatReference(
+          { bookId: draft.startBookId, chapter: draft.startChapter },
+          index,
+        )} instead? Days you have already completed stay exactly as they are.`;
+  return `${logged} is logged as an extra reading. ${stays}\n\n${instead}`;
+}
+
 /** Why a day the plan names no chapter for is empty. */
 export function unscheduledMessage(
   kind: "canon-complete" | "not-scheduled" | "before-plan",
+  /** The day holds extra readings, so it is not empty: only the plan reading is missing. */
+  hasExtras = false,
 ): string {
+  if (kind === "not-scheduled" && hasExtras) {
+    return "No plan reading was recorded on this day, only the extra reading below. Missing a day doesn’t cost you a chapter: your place in the plan moves as you read, not as days pass.";
+  }
   if (kind === "canon-complete") {
     return "You had already finished the entire Bible by this day, so nothing was scheduled.";
   }

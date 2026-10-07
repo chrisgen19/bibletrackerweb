@@ -10,6 +10,8 @@ type UnscheduledPanelProps = Pick<
   DayDetailProps,
   | "day"
   | "rows"
+  | "extraRows"
+  | "onSetExtra"
   | "onComplete"
   | "onUndo"
   | "onUndoEntry"
@@ -39,7 +41,7 @@ export function UnscheduledPanel(props: UnscheduledPanelProps) {
   return (
     <div className="mt-5">
       <p className="text-body text-muted-foreground">
-        {unscheduledMessage(kind)}
+        {unscheduledMessage(kind, props.extraRows.length > 0)}
       </p>
 
       {hasRecord ? (
@@ -49,6 +51,7 @@ export function UnscheduledPanel(props: UnscheduledPanelProps) {
           isComplete={areRowsComplete(rows, getProgressFor)}
           onUndo={props.onUndo}
           onUndoEntry={props.onUndoEntry}
+          onSetExtra={props.onSetExtra}
         />
       ) : isMissed && currentPosition !== null && catchUpProgress !== null ? (
         <div className="mt-5">

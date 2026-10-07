@@ -34,6 +34,12 @@ export interface ReadingCompletion {
    */
   readonly verses: VerseRange | null;
   readonly completedAt: number;
+  /**
+   * An extra reading: shown on its day and counted toward the streak, but never part of
+   * the plan's chapter progress. Absent means a plan reading, which is every row the iOS
+   * app writes.
+   */
+  readonly isExtra?: boolean;
 }
 
 /** What a given calendar day asks the user to read. */

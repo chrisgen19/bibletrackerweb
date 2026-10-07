@@ -15,6 +15,7 @@ import {
   replaceActiveReadingPlan,
   resetAllProgress,
   setAppearancePreference,
+  setReadingExtra,
   setTimeZone,
 } from "@/lib/dal";
 import { compareDateKeys } from "@/utils/date-key";
@@ -24,6 +25,7 @@ import {
   changePlanInput,
   completeReadingInput,
   setAppearanceInput,
+  setReadingExtraInput,
   startPlanInput,
   syncTimeZoneInput,
   undoReadingEntryInput,
@@ -106,7 +108,7 @@ export async function completeReadingFor(
 ): Promise<ReadingResult> {
   const input = completeReadingInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
-  const { date, chapters, verses, ids, timeZone } = input.data;
+  const { date, chapters, verses, ids, isExtra, timeZone } = input.data;
 
   if (compareDateKeys(date, getTodayDateKeyInZone(timeZone)) > 0) {
     return fail("future-date");
@@ -135,6 +137,7 @@ export async function completeReadingFor(
       chapters,
       verses,
       ids,
+      isExtra,
     });
   } catch (error) {
     // Another device reset progress after the plan was looked up, so the plan is gone.
@@ -144,7 +147,7 @@ export async function completeReadingFor(
   return withSnapshot(userId);
 }
 
-/** Undo: removes every reading recorded on that day. */
+/** Undo: removes every plan reading recorded on that day (extras stay). */
 export async function undoReadingFor(
   userId: string,
   raw: unknown,
@@ -163,6 +166,17 @@ export async function undoReadingEntryFor(
   const input = undoReadingEntryInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
   await removeCompletionById(userId, input.data.id);
+  return withSnapshot(userId);
+}
+
+/** Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18). */
+export async function setReadingExtraFor(
+  userId: string,
+  raw: unknown,
+): Promise<ReadingResult> {
+  const input = setReadingExtraInput.safeParse(raw);
+  if (!input.success) return fail("invalid-input");
+  await setReadingExtra(userId, input.data.id, input.data.isExtra);
   return withSnapshot(userId);
 }
 

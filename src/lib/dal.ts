@@ -74,6 +74,7 @@ function toCompletion(row: ReadingCompletionRow): ReadingCompletion {
         ? null
         : { from: row.fromVerse, to: row.toVerse },
     completedAt: row.completedAt.getTime(),
+    isExtra: row.isExtra,
   };
 }
 
@@ -263,6 +264,8 @@ export interface MarkCompleteInput {
    * removes the right row. Omit to let the database generate them.
    */
   readonly ids?: readonly string[];
+  /** Record the chapters as extra readings, outside the plan's progress. */
+  readonly isExtra?: boolean;
 }
 
 /**
@@ -297,18 +300,39 @@ export async function markReadingComplete(
       fromVerse: span?.from ?? 0,
       toVerse: span?.to ?? 0,
       completedAt,
+      isExtra: input.isExtra ?? false,
     })),
     skipDuplicates: true,
   });
 }
 
-/** Undo: removes every chapter this reader recorded on that local day. */
+/**
+ * Moves one recorded reading into or out of the plan. Scoped to the reader, and, like
+ * removal, an id that is not a UUID matches nothing instead of failing the query.
+ */
+export async function setReadingExtra(
+  userId: string,
+  id: string,
+  isExtra: boolean,
+): Promise<void> {
+  if (!UUID_PATTERN.test(id)) return;
+  await db.readingCompletion.updateMany({
+    where: { id, userId },
+    data: { isExtra },
+  });
+}
+
+/**
+ * Undo: removes every plan reading this reader recorded on that local day. Extra
+ * readings are listed and removed on their own, so undoing the day's plan reading never
+ * takes one with it.
+ */
 export async function removeReadingCompletion(
   userId: string,
   localDate: DateKey,
 ): Promise<void> {
   await db.readingCompletion.deleteMany({
-    where: { userId, localDate: toDbDate(localDate) },
+    where: { userId, localDate: toDbDate(localDate), isExtra: false },
   });
 }
 

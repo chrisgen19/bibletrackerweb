@@ -18,6 +18,7 @@ import {
   withCompletedReading,
   withoutDay,
   withoutEntry,
+  withReadingExtra,
   withReset,
   withStartedPlan,
 } from "@/features/reading-plan/commands/optimistic";
@@ -25,6 +26,7 @@ import {
   type ReadingErrorCode,
   readingErrorMessage,
 } from "@/features/reading-plan/commands/results";
+import { selectPlanReadings } from "@/features/reading-plan/domain/reading-kind";
 import {
   type CompletionLookup,
   createCompletionLookup,
@@ -47,12 +49,30 @@ import { useLocalToday } from "./use-local-today";
  * The same shape as bibletrackerapp's ReadingDataValue, so the ported hooks and screens
  * work unchanged, plus what a network adds: an error to show and a saving flag.
  */
+/** Options for a reading beyond the chapters and span. */
+export interface CompleteReadingOptions {
+  /** Record it as an extra reading, outside the plan (bibletrackerweb#18). */
+  readonly isExtra?: boolean;
+  /** Row ids to use, one per chapter, so the caller can refer to the rows afterwards. */
+  readonly ids?: readonly string[];
+}
+
 interface ReadingDataValue {
   plans: readonly ReadingPlan[];
   activePlan: ReadingPlan | null;
+  /** Every recorded reading, extras included: what each day holds. */
   completions: readonly ReadingCompletion[];
   completionLookup: CompletionLookup;
+  /** The calendar's view: day status and streaks count every reading. */
   scheduleContext: ScheduleContext;
+  /** Plan readings only: the chapter progress, the unread list and verse resumption. */
+  planReadings: readonly ReadingCompletion[];
+  planCompletionLookup: CompletionLookup;
+  /**
+   * The plan's view, where extra readings do not exist: today's card and the day sheet,
+   * so a day holding only an extra still offers its plan reading.
+   */
+  planScheduleContext: ScheduleContext;
   today: DateKey;
   /** The presence of an active plan is the onboarding marker, as on iOS. */
   hasCompletedOnboarding: boolean;
@@ -68,9 +88,12 @@ interface ReadingDataValue {
     date: DateKey,
     chapters: readonly BibleReference[],
     verses?: VerseRange,
+    options?: CompleteReadingOptions,
   ) => boolean;
   undoReading: (date: DateKey) => void;
   undoReadingEntry: (id: string) => void;
+  /** Moves one recorded reading into or out of the plan. */
+  setReadingExtra: (id: string, isExtra: boolean) => void;
   resetProgress: () => void;
   /** Plain copy for the last failed save, or null. */
   error: string | null;
@@ -177,17 +200,22 @@ export function ReadingDataProvider({
       date: DateKey,
       chapters: readonly BibleReference[],
       verses?: VerseRange,
+      options: CompleteReadingOptions = {},
     ) => {
       if (chapters.length === 0) return false;
       if (compareDateKeys(date, today) > 0) return false;
       if (planForReading(current(), date) === null) return false;
 
+      const isExtra = options.isExtra === true;
       const reading = {
         date,
         chapters: [...chapters],
         verses,
-        ids: chapters.map(() => createId()),
+        ids: chapters.map(
+          (_, position) => options.ids?.[position] ?? createId(),
+        ),
         completedAt: Date.now(),
+        isExtra,
       };
       mutate({
         optimistic: (s) => withCompletedReading(s, reading),
@@ -197,6 +225,7 @@ export function ReadingDataProvider({
             chapters: reading.chapters,
             verses,
             ids: reading.ids,
+            isExtra,
             timeZone,
           }),
       });
@@ -223,6 +252,15 @@ export function ReadingDataProvider({
     [mutate],
   );
 
+  const setReadingExtra = useCallback(
+    (id: string, isExtra: boolean) =>
+      mutate({
+        optimistic: (s) => withReadingExtra(s, id, isExtra),
+        run: () => actions.setReadingExtra({ id, isExtra }),
+      }),
+    [mutate],
+  );
+
   const resetProgress = useCallback(
     () => mutate({ optimistic: withReset, run: () => actions.resetProgress() }),
     [mutate],
@@ -230,8 +268,9 @@ export function ReadingDataProvider({
 
   const dismissError = useCallback(() => setErrorCode(null), []);
 
-  const value = useMemo<ReadingDataValue>(
-    () => ({
+  const value = useMemo<ReadingDataValue>(() => {
+    const planReadings = selectPlanReadings(snapshot.completions);
+    return {
       plans: snapshot.plans,
       activePlan: snapshot.activePlan,
       completions: snapshot.completions,
@@ -239,6 +278,15 @@ export function ReadingDataProvider({
       scheduleContext: createScheduleContext(
         snapshot.plans,
         snapshot.completions,
+        today,
+        undefined,
+        planReadings,
+      ),
+      planReadings,
+      planCompletionLookup: createCompletionLookup(planReadings),
+      planScheduleContext: createScheduleContext(
+        snapshot.plans,
+        planReadings,
         today,
       ),
       today,
@@ -248,25 +296,26 @@ export function ReadingDataProvider({
       completeReading,
       undoReading,
       undoReadingEntry,
+      setReadingExtra,
       resetProgress,
       error: errorCode === null ? null : readingErrorMessage(errorCode),
       dismissError,
       isSaving: isPending,
-    }),
-    [
-      snapshot,
-      today,
-      startPlan,
-      changePlan,
-      completeReading,
-      undoReading,
-      undoReadingEntry,
-      resetProgress,
-      errorCode,
-      dismissError,
-      isPending,
-    ],
-  );
+    };
+  }, [
+    snapshot,
+    today,
+    startPlan,
+    changePlan,
+    completeReading,
+    undoReading,
+    undoReadingEntry,
+    setReadingExtra,
+    resetProgress,
+    errorCode,
+    dismissError,
+    isPending,
+  ]);
 
   return (
     <ReadingDataContext.Provider value={value}>

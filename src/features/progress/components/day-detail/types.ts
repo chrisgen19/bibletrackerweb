@@ -1,11 +1,13 @@
 import type { BibleReference, VerseRange } from "@/data/bible/canon";
 import type { ChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
+import type { ReadingKind } from "@/features/reading-plan/domain/reading-kind";
 import type { CompletionLookup } from "@/features/reading-plan/domain/schedule";
 import type {
   DayReading,
   ReadingCompletion,
   ReadingPlanDraft,
 } from "@/features/reading-plan/domain/types";
+import type { CompleteReadingOptions } from "@/features/reading-plan/hooks/reading-data-provider";
 import type { DateKey } from "@/utils/date-key";
 
 /** Everything the day detail and its panels work from (bibletrackerapp's DayDetailProps). */
@@ -16,6 +18,7 @@ export interface DayDetailProps {
   onComplete: (
     chapters: readonly BibleReference[],
     verses?: VerseRange,
+    options?: CompleteReadingOptions,
   ) => boolean;
   onUndo: () => void;
   /** Removes one recorded reading, so a day with several keeps the rest. */
@@ -24,8 +27,14 @@ export interface DayDetailProps {
   onChangePlan: (draft: ReadingPlanDraft) => void;
   /** Lets a continuation skip days that are already recorded. */
   completions: CompletionLookup;
-  /** The rows recorded on this day, so each can be described and removed on its own. */
+  /** The plan readings recorded on this day, so each can be described and removed on its own. */
   rows: readonly ReadingCompletion[];
+  /** The extra readings recorded on this day, listed apart from the plan's. */
+  extraRows: readonly ReadingCompletion[];
+  /** Moves one recorded reading into or out of the plan. */
+  onSetExtra: (id: string, isExtra: boolean) => void;
+  /** Whether a chapter logged from the Custom tab belongs to the plan (reading-kind.ts). */
+  classifyReading: (reference: BibleReference) => ReadingKind;
   /** Progress on the scheduled chapter across every day it was touched, or null. */
   progress: ChapterProgress | null;
   /** Progress for any chapter, so the Custom tab can resume an unfinished one. */
