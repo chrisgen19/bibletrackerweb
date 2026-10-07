@@ -94,11 +94,10 @@ hidden. To turn it on:
    (and the production one, `https://<your-domain>/api/auth/callback/google`, later).
 3. Put the client ID and secret in `.env`, and restart `pnpm dev`.
 
-**Preview deployments:** Better Auth rejects sign-in requests from any origin other
-than `BETTER_AUTH_URL` (`403 INVALID_ORIGIN`), so neither email + password nor Google
-works on Vercel preview URLs yet. Phase 6 adds this project's own preview hosts to
-`baseURL.allowedHosts`; never allow all of `*.vercel.app`, which would trust every
-Vercel deployment on the internet.
+**Other origins:** Better Auth rejects sign-in requests from any origin other than
+`BETTER_AUTH_URL` (`403 INVALID_ORIGIN`). Production has one domain and no preview
+deployments, so nothing else is allowed. If previews are added later, list their hosts in
+`baseURL.allowedHosts`, never a wildcard that also covers other people's apps.
 
 ## Reading data
 
@@ -148,6 +147,37 @@ The screens are bibletrackerapp's, with its copy, on the same design tokens.
 - The "one open plan per user" index uses Prisma's `partialIndexes` preview feature, so
   Prisma manages it instead of dropping it as unknown.
 - `prisma migrate reset` deletes all data. Only ever run it against a local database.
+
+## Deployment
+
+Production runs at https://bibledaily.cgdev.site on a self-hosted
+[Coolify](https://coolify.io) server, built from the `Dockerfile` and deployed on every
+push to `main`.
+
+- **Build:** `next build` imports the server modules, which validate their environment
+  (`src/lib/env.ts`). The build gets obvious stand-ins instead of real values, since every
+  page renders per request; Turbopack's build cache, which records them, is removed.
+- **Start:** `prisma migrate deploy`, then `next start` on port 3000. A migration that
+  fails stops the container before it takes traffic.
+- **Environment:** `DATABASE_URL`, `BETTER_AUTH_URL` (`https://bibledaily.cgdev.site`)
+  and `BETTER_AUTH_SECRET`, set in Coolify as runtime-only variables, so they never
+  reach a build argument or the image history. Google sign-in adds `GOOGLE_CLIENT_ID`
+  and `GOOGLE_CLIENT_SECRET`, with the redirect URI
+  `https://bibledaily.cgdev.site/api/auth/callback/google`.
+- **Database:** its own `bibletrackerweb` database and login on the server's shared
+  Postgres, reached over Coolify's internal network.
+- **Health check:** `GET /api/health`, which answers without touching the database, so a
+  database blip does not restart a healthy container.
+
+To try the production image locally:
+
+```bash
+docker build -t bibletrackerweb .
+docker run --rm --network host -e PORT=3200 \
+  -e DATABASE_URL=postgresql://bibletracker:bibletracker@localhost:5434/<database> \
+  -e BETTER_AUTH_URL=http://localhost:3200 \
+  -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" bibletrackerweb
+```
 
 ## Project rules
 
