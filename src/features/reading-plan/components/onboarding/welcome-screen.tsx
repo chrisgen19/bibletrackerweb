@@ -2,6 +2,7 @@ import { Book } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/features/auth/components/account-menu";
 
 /** Each line arrives a little after the one before, as on iOS; still under reduced motion. */
 const ENTER =
@@ -10,6 +11,10 @@ const ENTER =
 export function WelcomeScreen() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5">
+      {/* The way out for someone who signed in with the wrong account. */}
+      <div className="flex justify-end pt-3">
+        <AccountMenu />
+      </div>
       <div className="flex flex-1 flex-col justify-center">
         <div
           className={`${ENTER} flex size-[60px] items-center justify-center rounded-2xl bg-primary-soft`}

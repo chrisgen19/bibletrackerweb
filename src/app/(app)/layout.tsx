@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { QueryProvider } from "@/components/query-provider";
+import { AccountProvider } from "@/features/auth/hooks/account-context";
 import { WriteStatus } from "@/features/reading-plan/components/write-status";
 import { ReadingDataProvider } from "@/features/reading-plan/hooks/reading-data-provider";
 import { AppearanceSync } from "@/features/settings/components/appearance-sync";
@@ -34,20 +35,22 @@ export default async function AppLayout({
 
   return (
     <QueryProvider>
-      <ReadingDataProvider
-        initialSnapshot={snapshot}
-        initialToday={getTodayDateKeyInZone(zone.timeZone)}
-        initialTimeZone={zone.timeZone}
-        initialTimeZoneFromDevice={zone.fromDevice}
-      >
-        {children}
-        {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
-        {sheet}
-        <WriteStatus />
-        {accountAppearance === null ? null : (
-          <AppearanceSync preference={accountAppearance} />
-        )}
-      </ReadingDataProvider>
+      <AccountProvider account={{ name: user.name, email: user.email }}>
+        <ReadingDataProvider
+          initialSnapshot={snapshot}
+          initialToday={getTodayDateKeyInZone(zone.timeZone)}
+          initialTimeZone={zone.timeZone}
+          initialTimeZoneFromDevice={zone.fromDevice}
+        >
+          {children}
+          {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
+          {sheet}
+          <WriteStatus />
+          {accountAppearance === null ? null : (
+            <AppearanceSync preference={accountAppearance} />
+          )}
+        </ReadingDataProvider>
+      </AccountProvider>
     </QueryProvider>
   );
 }
