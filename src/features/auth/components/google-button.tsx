@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
+import { useLeavingPending } from "../hooks/use-leaving-pending";
 import { authHref } from "../safe-next-path";
 
 /**
@@ -14,7 +15,7 @@ import { authHref } from "../safe-next-path";
  * still carrying `next`.
  */
 export function GoogleButton({ next }: { next: string }) {
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useLeavingPending();
   const [error, setError] = useState<string | null>(null);
 
   async function continueWithGoogle() {

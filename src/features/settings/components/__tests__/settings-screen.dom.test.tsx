@@ -1,7 +1,8 @@
 // Review on #10 (Codex): Settings named the plan segment's first chapter as the "current
 // position", and the reset note counted stored rows as completed chapters.
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { readerPartWayThrough } from "@/test/reading-scenarios";
 
@@ -20,10 +21,23 @@ vi.mock("@/actions/reading", () => ({ setAppearance: vi.fn() }));
 vi.mock("@/features/auth/components/sign-out-button", () => ({
   SignOutButton: () => null,
 }));
+const { linkSocial } = vi.hoisted(() => ({ linkSocial: vi.fn() }));
+vi.mock("@/lib/auth-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth-client")>()),
+  authClient: { linkSocial },
+}));
 
-function renderSettings() {
+type Google = ComponentProps<typeof SettingsScreen>["google"];
+
+function renderSettings(google: Google = null) {
   data.current = { ...readerPartWayThrough(), resetProgress: vi.fn() };
-  render(<SettingsScreen appearance="system" email="reader@example.test" />);
+  render(
+    <SettingsScreen
+      appearance="system"
+      email="reader@example.test"
+      google={google}
+    />,
+  );
 }
 
 describe("SettingsScreen", () => {
@@ -42,7 +56,13 @@ describe("SettingsScreen", () => {
       scheduleContext: { ...reader.scheduleContext, unread: [] },
       resetProgress: vi.fn(),
     };
-    render(<SettingsScreen appearance="system" email="reader@example.test" />);
+    render(
+      <SettingsScreen
+        appearance="system"
+        email="reader@example.test"
+        google={null}
+      />,
+    );
 
     expect(
       screen.getByRole("link", { name: /Current position/ }).textContent,
@@ -83,5 +103,104 @@ describe("SettingsScreen", () => {
     expect(
       screen.getByText("This will remove 4 completed chapters."),
     ).toBeTruthy();
+  });
+
+  // Production feedback after #13: Google sign-in for an existing password account
+  // stopped at "sign in with your password instead", with no way to add Google.
+  describe("Google", () => {
+    // Braces: a function returned from beforeEach runs as cleanup, which would call it.
+    beforeEach(() => {
+      linkSocial.mockReset();
+    });
+
+    it("is not offered when Google sign-in is not configured", () => {
+      renderSettings(null);
+
+      expect(screen.queryByText("Google")).toBeNull();
+    });
+
+    it("connects Google from the signed-in account and comes back here", async () => {
+      linkSocial.mockResolvedValue({
+        data: { url: "", redirect: true },
+        error: null,
+      });
+      renderSettings({ linked: false, error: null });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Connect Google" }),
+      );
+
+      expect(linkSocial).toHaveBeenCalledWith({
+        provider: "google",
+        callbackURL: "/settings",
+        errorCallbackURL: "/settings?google=failed",
+      });
+      expect(screen.getByText("Opening Google...")).toBeTruthy();
+    });
+
+    it("shows a connected Google account without the button", () => {
+      renderSettings({ linked: true, error: null });
+
+      expect(screen.getByText("Connected")).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Connect Google" }),
+      ).toBeNull();
+      expect(screen.queryByText(/Connect Google to sign in/)).toBeNull();
+    });
+
+    it("shows why the last attempt failed, in the words the page chose", () => {
+      // The page maps the callback's error code on the server (googleLinkErrorMessage).
+      renderSettings({ linked: false, error: "That Google account is taken." });
+
+      expect(screen.getByRole("alert").textContent).toBe(
+        "That Google account is taken.",
+      );
+    });
+
+    // Review on #14 (CodeRabbit): Safari can restore this page from its back/forward
+    // cache after the reader backs out of Google, with the button still pending.
+    it("is usable again when the page comes back from the back/forward cache", async () => {
+      linkSocial.mockResolvedValue({
+        data: { url: "", redirect: true },
+        error: null,
+      });
+      renderSettings({ linked: false, error: null });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Connect Google" }),
+      );
+      // An ordinary page show changes nothing.
+      act(() => {
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: false }),
+        );
+      });
+      expect(screen.getByText("Opening Google...")).toBeTruthy();
+
+      act(() => {
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: true }),
+        );
+      });
+      const button = screen.getByRole("button", { name: "Connect Google" });
+      expect(button.textContent).toBe("Connect");
+      expect((button as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it("lets the reader try again when the request never left", async () => {
+      linkSocial.mockRejectedValue(new TypeError("Failed to fetch"));
+      renderSettings({ linked: false, error: null });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Connect Google" }),
+      );
+
+      expect(screen.getByRole("alert").textContent).toMatch(
+        /Check your connection/,
+      );
+      expect(
+        screen.getByRole("button", { name: "Connect Google" }),
+      ).toBeTruthy();
+    });
   });
 });

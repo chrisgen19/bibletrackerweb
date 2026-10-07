@@ -32,12 +32,29 @@ export function authErrorMessage(
  * Auth adds to the URL.
  *
  * `account_not_linked` means an email + password account already uses this address.
- * Better Auth refuses to attach Google to it because that email was never verified (see
- * `requireLocalEmailVerified` in src/lib/auth.ts), so point the reader at the password.
+ * Better Auth refuses to attach Google to it at sign-in because that email was never
+ * verified (see `requireLocalEmailVerified` in src/lib/auth.ts). Signed in with the
+ * password, the reader can connect Google from Settings, which proves both sides.
  */
 export function oauthErrorMessage(error: string | undefined): string {
   if (error === "account_not_linked") {
-    return "An account with this email already exists. Sign in with your password instead.";
+    return "An account with this email already exists. Sign in with your password, then connect Google in Settings to use it next time.";
   }
   return "Google sign-in didn't complete. Try again.";
+}
+
+/**
+ * Copy for a "Connect Google" round trip that came back to Settings with an `error`
+ * code (Better Auth's OAuth callback codes, or Google's own, such as `access_denied`).
+ */
+export function googleLinkErrorMessage(error: string): string {
+  switch (error) {
+    case "email_does_not_match":
+      return "That Google account uses a different email. Connect the Google account with the same email as this one.";
+    case "account_already_linked_to_different_user":
+      return "That Google account is already connected to another Bible Daily account.";
+    case "access_denied":
+      return "Google wasn't connected. You can try again any time.";
+  }
+  return "Google couldn't be connected. Try again.";
 }

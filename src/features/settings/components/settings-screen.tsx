@@ -11,18 +11,25 @@ import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provi
 import type { AppearancePreference } from "@/lib/settings";
 
 import { AppearanceSelector } from "./appearance-selector";
+import { GoogleLinkRow, type GoogleLinkState } from "./google-link-row";
 import { ResetProgressSection } from "./reset-progress-section";
 
 interface SettingsScreenProps {
   appearance: AppearancePreference;
   email: string;
+  /** Null when Google sign-in is not configured. */
+  google: GoogleLinkState | null;
 }
 
 /**
  * bibletrackerapp's settings, without the daily reminder (not in v1) and with the account
  * the web app adds.
  */
-export function SettingsScreen({ appearance, email }: SettingsScreenProps) {
+export function SettingsScreen({
+  appearance,
+  email,
+  google,
+}: SettingsScreenProps) {
   const { activePlan, scheduleContext } = useReadingData();
   // Where the reader is: the head of the unread queue, as the day detail reads it. Not
   // the plan segment's first chapter, which stays put however much is read.
@@ -61,15 +68,27 @@ export function SettingsScreen({ appearance, email }: SettingsScreenProps) {
 
       <section aria-labelledby="account-heading" className="mt-6">
         <SectionHeader id="account-heading" title="Account" />
-        <Panel
-          padded={false}
-          className="flex items-center gap-3 py-2 pr-2 pl-4"
-        >
-          <span className="min-w-0 flex-1 truncate text-body text-muted-foreground">
-            {email}
-          </span>
-          <SignOutButton variant="plain" size="medium" />
+        <Panel padded={false} className="overflow-hidden">
+          <div className="relative flex items-center gap-3 py-2 pr-2 pl-4">
+            <span className="min-w-0 flex-1 truncate text-body text-muted-foreground">
+              {email}
+            </span>
+            <SignOutButton variant="plain" size="medium" />
+            {google === null ? null : (
+              <span
+                aria-hidden
+                className="absolute right-0 bottom-0 left-4 h-px bg-border"
+              />
+            )}
+          </div>
+          {google === null ? null : <GoogleLinkRow {...google} />}
         </Panel>
+        {google === null || google.linked ? null : (
+          <p className="mt-2 text-footnote text-faint">
+            Connect Google to sign in with either your password or your Google
+            account.
+          </p>
+        )}
       </section>
 
       <div className="mt-6">
