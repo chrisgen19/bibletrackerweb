@@ -30,7 +30,10 @@ RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV PORT=3000
-COPY --from=build /app ./
+# Run as the image's unprivileged node user rather than root. It owns the app so Next
+# can create .next/cache at runtime.
+COPY --from=build --chown=node:node /app ./
+USER node
 EXPOSE 3000
 # Migrations run on start, against the real database, before the server takes traffic.
 # The binaries are called directly: pnpm at runtime would make corepack download it on

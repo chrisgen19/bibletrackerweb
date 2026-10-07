@@ -157,8 +157,9 @@ push to `main`.
 - **Build:** `next build` imports the server modules, which validate their environment
   (`src/lib/env.ts`). The build gets obvious stand-ins instead of real values, since every
   page renders per request; Turbopack's build cache, which records them, is removed.
-- **Start:** `prisma migrate deploy`, then `next start` on port 3000. A migration that
-  fails stops the container before it takes traffic.
+- **Start:** `prisma migrate deploy`, then `next start` on port 3000, both as the image's
+  unprivileged `node` user. A migration that fails stops the container before it takes
+  traffic.
 - **Environment:** `DATABASE_URL`, `BETTER_AUTH_URL` (`https://bibledaily.cgdev.site`)
   and `BETTER_AUTH_SECRET`, set in Coolify as runtime-only variables, so they never
   reach a build argument or the image history. Google sign-in adds `GOOGLE_CLIENT_ID`
