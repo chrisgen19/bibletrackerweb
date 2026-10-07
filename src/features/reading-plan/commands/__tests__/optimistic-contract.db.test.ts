@@ -240,6 +240,60 @@ describe("optimistic snapshots match the server", () => {
     ]);
   });
 
+  // Web-only (bibletrackerweb#18).
+  it("through a plan reading of a chapter already logged as an extra", async () => {
+    await runBoth([
+      { kind: "start", draft: makeDraft({ startDate: "2026-01-01" }) },
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+      },
+      { kind: "set-extra", nth: 0, isExtra: true },
+      // Marking it read again brings the extra back into the plan.
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+      },
+      // A multi-chapter day brings in the match and adds the rest.
+      {
+        kind: "complete",
+        date: "2026-01-02",
+        chapters: [{ bookId: "GEN", chapter: 2 }],
+        isExtra: true,
+      },
+      {
+        kind: "complete",
+        date: "2026-01-02",
+        chapters: [
+          { bookId: "GEN", chapter: 2 },
+          { bookId: "GEN", chapter: 3 },
+        ],
+      },
+      // An extra never demotes a plan reading.
+      {
+        kind: "complete",
+        date: "2026-01-02",
+        chapters: [{ bookId: "GEN", chapter: 3 }],
+        isExtra: true,
+      },
+      // A different span is a different row, so the extra stays extra.
+      {
+        kind: "complete",
+        date: "2026-01-03",
+        chapters: [{ bookId: "GEN", chapter: 4 }],
+        verses: { from: 1, to: 10 },
+        isExtra: true,
+      },
+      {
+        kind: "complete",
+        date: "2026-01-03",
+        chapters: [{ bookId: "GEN", chapter: 4 }],
+      },
+    ]);
+  });
+
   it("through a same-day position change", async () => {
     await runBoth([
       { kind: "start", draft: makeDraft({ startDate: today }) },

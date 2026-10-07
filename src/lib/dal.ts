@@ -271,10 +271,15 @@ export interface MarkCompleteInput {
 /**
  * Records a day's reading.
  *
- * One statement with ON CONFLICT DO NOTHING: a multi-chapter day is all-or-nothing, and
- * re-marking a day that is already complete is a no-op rather than a duplicate-key
- * failure. The plan must belong to this reader; the composite foreign key rejects a
- * plan id from anyone else.
+ * The insert is one statement with ON CONFLICT DO NOTHING: a multi-chapter day is
+ * all-or-nothing, and re-marking a day that is already complete is a no-op rather than a
+ * duplicate-key failure. The plan must belong to this reader; the composite foreign key
+ * rejects a plan id from anyone else.
+ *
+ * The unique key ignores `is_extra`, so a plan reading of a chapter already logged as an
+ * extra on that day and span (one moved out with "Mark as extra", say) would be skipped
+ * and leave the plan untouched. That row is brought into the plan instead. An extra
+ * reading never demotes a plan row.
  */
 export async function markReadingComplete(
   userId: string,
@@ -282,27 +287,38 @@ export async function markReadingComplete(
 ): Promise<void> {
   const completedAt = new Date(input.completedAt ?? Date.now());
   const localDate = toDbDate(input.localDate);
+  const isExtra = input.isExtra ?? false;
 
   // A span only makes sense for a single chapter; ignore it otherwise rather than
   // silently applying the same verses to several chapters.
   const span = input.chapters.length === 1 ? input.verses : undefined;
+  const spans = input.chapters.map((chapter) => ({
+    bookId: chapter.bookId,
+    chapter: chapter.chapter,
+    fromVerse: span?.from ?? 0,
+    toVerse: span?.to ?? 0,
+  }));
 
-  await db.readingCompletion.createMany({
-    data: input.chapters.map((chapter, position) => ({
-      ...(input.ids?.[position] === undefined
-        ? {}
-        : { id: input.ids[position] }),
-      userId,
-      readingPlanId: input.readingPlanId,
-      localDate,
-      bookId: chapter.bookId,
-      chapter: chapter.chapter,
-      fromVerse: span?.from ?? 0,
-      toVerse: span?.to ?? 0,
-      completedAt,
-      isExtra: input.isExtra ?? false,
-    })),
-    skipDuplicates: true,
+  await db.$transaction(async (tx) => {
+    await tx.readingCompletion.createMany({
+      data: spans.map((row, position) => ({
+        ...(input.ids?.[position] === undefined
+          ? {}
+          : { id: input.ids[position] }),
+        ...row,
+        userId,
+        readingPlanId: input.readingPlanId,
+        localDate,
+        completedAt,
+        isExtra,
+      })),
+      skipDuplicates: true,
+    });
+    if (isExtra) return;
+    await tx.readingCompletion.updateMany({
+      where: { userId, localDate, isExtra: true, OR: spans },
+      data: { isExtra: false },
+    });
   });
 }
 

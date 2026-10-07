@@ -63,6 +63,42 @@ describe("markReadingComplete and extra readings", () => {
       expect.objectContaining({ bookId: "REV", chapter: 5, isExtra: true }),
     ]);
   });
+
+  it("brings a matching extra into the plan instead of skipping it", async () => {
+    const id = await log("2026-08-01", 1, { isExtra: true });
+
+    await log("2026-08-01", 1);
+
+    expect(await getAllCompletions(user)).toEqual([
+      expect.objectContaining({ id, chapter: 1, isExtra: false }),
+    ]);
+  });
+
+  it("leaves the same chapter on another day as an extra", async () => {
+    await log("2026-08-01", 1, { isExtra: true });
+
+    await log("2026-08-02", 1);
+
+    expect(
+      (await getAllCompletions(user)).map((row) => [
+        row.localDate,
+        row.isExtra,
+      ]),
+    ).toEqual([
+      ["2026-08-01", true],
+      ["2026-08-02", false],
+    ]);
+  });
+
+  it("never demotes a plan reading when the same chapter is logged as extra", async () => {
+    const id = await log("2026-08-01", 1);
+
+    await log("2026-08-01", 1, { isExtra: true });
+
+    expect(await getAllCompletions(user)).toEqual([
+      expect.objectContaining({ id, isExtra: false }),
+    ]);
+  });
 });
 
 describe("setReadingExtra", () => {
