@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { IconButton } from "@/components/icon-button";
 import {
@@ -19,6 +19,8 @@ interface PickerDialogProps {
   description?: string;
   /** Named for screen readers, as on iOS: "Close chapter picker". */
   closeLabel: string;
+  /** The row that opened the picker, which gets the focus back when it closes. */
+  returnFocusRef: RefObject<HTMLElement | null>;
   /** Pinned above the scrolling list, e.g. a search field. */
   toolbar?: ReactNode;
   children: ReactNode;
@@ -31,6 +33,7 @@ export function PickerDialog({
   title,
   description,
   closeLabel,
+  returnFocusRef,
   toolbar,
   children,
 }: PickerDialogProps) {
@@ -52,6 +55,12 @@ export function PickerDialog({
           if (marked === null) return;
           event.preventDefault();
           marked.focus();
+        }}
+        // Radix only returns focus to a DialogTrigger, and the row opens this itself, so
+        // without this, closing left keyboard focus on the page body.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
         }}
       >
         <div className="flex items-center gap-3 px-5 pt-4">

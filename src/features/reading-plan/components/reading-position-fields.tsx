@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { FieldRow } from "@/components/field-row";
 import { Panel } from "@/components/panel";
@@ -45,6 +45,8 @@ export function ReadingPositionFields({
   const { today } = useReadingData();
   const [picker, setPicker] = useState<"book" | "chapter" | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
+  const bookRow = useRef<HTMLButtonElement>(null);
+  const chapterRow = useRef<HTMLButtonElement>(null);
   const index = getCanonIndex(canonId);
   const book = index.getBook(value.bookId);
   const startDay = fromDateKey(value.startDate);
@@ -54,11 +56,13 @@ export function ReadingPositionFields({
     <div>
       <Panel padded={false} className="overflow-hidden">
         <FieldRow
+          ref={bookRow}
           label="Book"
           value={book?.name ?? value.bookId}
           onClick={() => setPicker("book")}
         />
         <FieldRow
+          ref={chapterRow}
           label="Chapter"
           value={String(value.chapter)}
           onClick={() => setPicker("chapter")}
@@ -105,6 +109,7 @@ export function ReadingPositionFields({
         canonId={canonId}
         selectedBookId={value.bookId}
         onClose={() => setPicker(null)}
+        returnFocusRef={bookRow}
         onSelect={(selected) =>
           onChange({
             ...value,
@@ -119,6 +124,7 @@ export function ReadingPositionFields({
         bookId={value.bookId}
         selectedChapter={value.chapter}
         onClose={() => setPicker(null)}
+        returnFocusRef={chapterRow}
         onSelect={(chapter) => onChange({ ...value, chapter })}
       />
     </div>
