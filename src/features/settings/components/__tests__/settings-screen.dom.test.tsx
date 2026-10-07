@@ -1,6 +1,7 @@
 // Review on #10 (Codex): Settings named the plan segment's first chapter as the "current
 // position", and the reset note counted stored rows as completed chapters.
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { readerPartWayThrough } from "@/test/reading-scenarios";
 
@@ -46,6 +47,32 @@ describe("SettingsScreen", () => {
     expect(
       screen.getByRole("link", { name: /Current position/ }).textContent,
     ).toContain("Finished");
+  });
+
+  // Review on #11 (Codex): the browser bar kept the device's colour, so choosing Dark on a
+  // light device put a light bar over a dark page.
+  it("recolours the browser bar with the appearance", async () => {
+    document.head.innerHTML = `
+      <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfaf8">
+      <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121110">`;
+    const bar = () =>
+      [...document.querySelectorAll<HTMLMetaElement>("meta[name=theme-color]")]
+        .map((meta) => meta.content)
+        .join(" ");
+    renderSettings();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("radio", { name: "Dark" }));
+    expect(document.documentElement.dataset.appearance).toBe("dark");
+    expect(bar()).toBe("#121110 #121110");
+
+    await user.click(screen.getByRole("radio", { name: "Light" }));
+    expect(bar()).toBe("#fbfaf8 #fbfaf8");
+
+    // System hands the choice back to the device, one colour per scheme.
+    await user.click(screen.getByRole("radio", { name: "System" }));
+    expect(bar()).toBe("#fbfaf8 #121110");
+    document.head.innerHTML = "";
   });
 
   it("counts chapters read in the reset warning, not stored rows", () => {

@@ -6,6 +6,7 @@ import {
   SegmentedControl,
   type SegmentOption,
 } from "@/components/segmented-control";
+import { applyAppearance } from "@/lib/appearance";
 import type { AppearancePreference } from "@/lib/settings";
 
 const OPTIONS: readonly SegmentOption<AppearancePreference>[] = [
@@ -15,8 +16,8 @@ const OPTIONS: readonly SegmentOption<AppearancePreference>[] = [
 ];
 
 /**
- * System, light or dark. The page changes at once (the attribute globals.css reads); the
- * action stores the choice and sets this device's cookie, so the next load matches.
+ * System, light or dark. The page and the browser bar change at once; the action stores
+ * the choice and sets this device's cookie, so the next load matches.
  */
 export function AppearanceSelector({
   initial,
@@ -28,7 +29,7 @@ export function AppearanceSelector({
 
   function choose(next: AppearancePreference) {
     setValue(next);
-    document.documentElement.dataset.appearance = next;
+    applyAppearance(next);
     startTransition(async () => {
       await setAppearance({ appearance: next });
     });

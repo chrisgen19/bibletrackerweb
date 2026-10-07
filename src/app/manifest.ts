@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
 
+import { THEME_COLORS } from "@/lib/appearance";
+
 /**
  * Installable, not offline: the app needs the server for every write, so there is no
  * service worker. Colours are the light theme's page background; the browser bar follows
- * the device through the theme-color tags in the root layout.
+ * the reader's appearance through the theme-color tags in the root layout.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -15,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#fbfaf8",
-    theme_color: "#fbfaf8",
+    background_color: THEME_COLORS.light,
+    theme_color: THEME_COLORS.light,
     icons: [
       {
         src: "/icons/icon-192.png",
