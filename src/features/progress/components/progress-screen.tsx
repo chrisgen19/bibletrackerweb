@@ -1,6 +1,6 @@
 "use client";
 
-import { Book, Calendar, Flame } from "lucide-react";
+import { Book, Calendar, Flame, Repeat } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,6 +18,7 @@ import { useMonthWindow } from "../hooks/use-month-window";
 import { useReadingProgress } from "../hooks/use-reading-progress";
 import { useStreaks } from "../hooks/use-streaks";
 import { CalendarSurface } from "./calendar-surface";
+import { NextReadThroughCard } from "./next-read-through-card";
 import { StatRow } from "./stat-row";
 import { TodayReadingCard } from "./today-reading-card";
 import { UnfinishedList } from "./unfinished-list";
@@ -25,7 +26,15 @@ import { UnfinishedList } from "./unfinished-list";
 /** bibletrackerapp's ProgressScreen (src/app/index.tsx). */
 export function ProgressScreen() {
   const router = useRouter();
-  const { hasCompletedOnboarding, today, completeReading } = useReadingData();
+  const {
+    hasCompletedOnboarding,
+    today,
+    completeReading,
+    currentReadThrough,
+    finishedReadThroughs,
+    canStartNextReadThrough,
+    startNextReadThrough,
+  } = useReadingData();
 
   const [monthKey, setMonthKey] = useState<MonthKey>(() =>
     monthKeyFromDateKey(today),
@@ -76,6 +85,12 @@ export function ProgressScreen() {
             detailHref={`/day/${today}`}
             progress={todayProgress}
           />
+          {canStartNextReadThrough ? (
+            <NextReadThroughCard
+              nextReadThrough={currentReadThrough + 1}
+              onStart={startNextReadThrough}
+            />
+          ) : null}
           <UnfinishedList
             chapters={unfinished}
             index={canonIndex}
@@ -93,10 +108,16 @@ export function ProgressScreen() {
                 value: String(streaks.longest),
                 label: "longest streak",
               },
+              // Web only (bibletrackerweb#18): progress is per read-through.
               {
                 icon: Book,
-                value: String(chaptersRead),
-                label: "chapters read",
+                value: chaptersRead.toLocaleString("en-US"),
+                label: "chapters this read-through",
+              },
+              {
+                icon: Repeat,
+                value: String(finishedReadThroughs),
+                label: "times through the Bible",
               },
             ]}
           />

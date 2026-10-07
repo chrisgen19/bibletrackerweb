@@ -5,6 +5,7 @@
 // match exactly.
 import { describe, expect, it } from "vitest";
 
+import { buildNextReadThroughDraft } from "@/features/reading-plan/domain/read-through";
 import type { ReadingPlanDraft } from "@/features/reading-plan/domain/types";
 import type { ReadingSnapshot } from "@/lib/dal";
 import { createTestUser, makeDraft } from "@/test/factories";
@@ -15,6 +16,7 @@ import {
   changePlanFor,
   completeReadingFor,
   setReadingExtraFor,
+  startNextReadThroughFor,
   startPlanFor,
   undoReadingEntryFor,
   undoReadingFor,
@@ -22,6 +24,7 @@ import {
 import {
   withChangedPlan,
   withCompletedReading,
+  withNextReadThrough,
   withoutDay,
   withoutEntry,
   withReadingExtra,
@@ -43,7 +46,8 @@ type Step =
     }
   | { kind: "undo-day"; date: string }
   | { kind: "undo-entry"; nth: number }
-  | { kind: "set-extra"; nth: number; isExtra: boolean };
+  | { kind: "set-extra"; nth: number; isExtra: boolean }
+  | { kind: "next-read-through" };
 
 /** Strips server-assigned values: plan ids become their position, timestamps go. */
 function comparable(snapshot: ReadingSnapshot) {
@@ -125,6 +129,17 @@ async function runBoth(steps: Step[]) {
         const id = ids[step.nth] ?? "";
         server = take(await undoReadingEntryFor(user, { id }));
         client = withoutEntry(client, id);
+        break;
+      }
+      case "next-read-through": {
+        const active = client.activePlan;
+        if (active === null) throw new Error("No plan to carry on from");
+        server = take(await startNextReadThroughFor(user, { timeZone: TZ }));
+        client = withNextReadThrough(
+          client,
+          buildNextReadThroughDraft(active, getTodayDateKeyInZone(TZ)),
+          { id: `p${clock}`, createdAt: clock },
+        );
         break;
       }
       case "set-extra": {
@@ -237,6 +252,36 @@ describe("optimistic snapshots match the server", () => {
       // Undoing the day removes its plan reading and leaves the extra.
       { kind: "undo-day", date: "2026-01-01" },
       { kind: "undo-entry", nth: 1 },
+    ]);
+  });
+
+  // Web-only (bibletrackerweb#18).
+  it("through a finished Bible and the next read-through", async () => {
+    await runBoth([
+      {
+        kind: "start",
+        draft: makeDraft({
+          startDate: "2026-01-01",
+          startBookId: "REV",
+          startChapter: 22,
+        }),
+      },
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "REV", chapter: 22 }],
+      },
+      { kind: "next-read-through" },
+      {
+        kind: "complete",
+        date: today,
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+      },
+      // A position change stays in read-through 2.
+      {
+        kind: "change",
+        draft: makeDraft({ startDate: today, startBookId: "PSA" }),
+      },
     ]);
   });
 

@@ -34,6 +34,7 @@ function byStart(a: ReadingPlan, b: ReadingPlan): number {
 function planFromDraft(
   draft: ReadingPlanDraft,
   created: CreatedRow,
+  readThrough: number,
 ): ReadingPlan {
   return {
     id: created.id,
@@ -45,16 +46,26 @@ function planFromDraft(
     createdAt: created.createdAt,
     isActive: true,
     endDate: null,
+    readThrough,
   };
 }
 
-/** createReadingPlan. */
+/** The read-through the active plan is in, as the DAL reads it. */
+function activeReadThrough(snapshot: ReadingSnapshot): number {
+  return snapshot.activePlan?.readThrough ?? 1;
+}
+
+/** createReadingPlan: carries on the latest read-through, 1 for a new reader. */
 export function withStartedPlan(
   snapshot: ReadingSnapshot,
   draft: ReadingPlanDraft,
   created: CreatedRow,
 ): ReadingSnapshot {
-  const plan = planFromDraft(draft, created);
+  const latest = snapshot.plans.reduce(
+    (max, plan) => Math.max(max, plan.readThrough ?? 1),
+    1,
+  );
+  const plan = planFromDraft(draft, created, latest);
   return {
     ...snapshot,
     plans: [...snapshot.plans, plan].sort(byStart),
@@ -68,11 +79,39 @@ export function withChangedPlan(
   draft: ReadingPlanDraft,
   created: CreatedRow,
 ): ReadingSnapshot {
+  return withReplacedPlan(
+    snapshot,
+    draft,
+    created,
+    activeReadThrough(snapshot),
+  );
+}
+
+/** startNextReadThrough: the same replacement, one read-through on. */
+export function withNextReadThrough(
+  snapshot: ReadingSnapshot,
+  draft: ReadingPlanDraft,
+  created: CreatedRow,
+): ReadingSnapshot {
+  return withReplacedPlan(
+    snapshot,
+    draft,
+    created,
+    activeReadThrough(snapshot) + 1,
+  );
+}
+
+function withReplacedPlan(
+  snapshot: ReadingSnapshot,
+  draft: ReadingPlanDraft,
+  created: CreatedRow,
+  readThrough: number,
+): ReadingSnapshot {
   const closeOn = addDaysToDateKey(draft.startDate, -1);
   const closed = snapshot.plans.map((plan) =>
     plan.isActive ? { ...plan, isActive: false, endDate: closeOn } : plan,
   );
-  const plan = planFromDraft(draft, created);
+  const plan = planFromDraft(draft, created, readThrough);
   return {
     ...snapshot,
     plans: [...closed, plan].sort(byStart),

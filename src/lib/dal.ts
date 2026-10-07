@@ -58,6 +58,7 @@ function toPlan(row: ReadingPlanRow): ReadingPlan {
     createdAt: row.createdAt.getTime(),
     isActive: row.isActive,
     endDate: row.endDate === null ? null : fromDbDate(row.endDate),
+    readThrough: row.readThrough,
   };
 }
 
@@ -78,7 +79,11 @@ function toCompletion(row: ReadingCompletionRow): ReadingCompletion {
   };
 }
 
-function planData(userId: string, draft: ReadingPlanDraft) {
+function planData(
+  userId: string,
+  draft: ReadingPlanDraft,
+  readThrough: number,
+) {
   return {
     userId,
     canonId: draft.canonId,
@@ -86,7 +91,20 @@ function planData(userId: string, draft: ReadingPlanDraft) {
     startBookId: draft.startBookId,
     startChapter: draft.startChapter,
     chaptersPerDay: draft.chaptersPerDay,
+    readThrough,
   };
+}
+
+/** The reader's latest read-through, or 1 before the first plan (web only). */
+async function latestReadThrough(
+  tx: Executor,
+  userId: string,
+): Promise<number> {
+  const { _max } = await tx.readingPlan.aggregate({
+    where: { userId },
+    _max: { readThrough: true },
+  });
+  return _max.readThrough ?? 1;
 }
 
 /**
@@ -167,8 +185,12 @@ export async function createReadingPlan(
 ): Promise<ReadingPlan> {
   return db.$transaction(async (tx) => {
     await lockReader(tx, userId);
+    // Onboarding carries on the latest read-through: 1 for a new reader.
+    const readThrough = await latestReadThrough(tx, userId);
     return toPlan(
-      await tx.readingPlan.create({ data: planData(userId, draft) }),
+      await tx.readingPlan.create({
+        data: planData(userId, draft, readThrough),
+      }),
     );
   });
 }
@@ -189,19 +211,60 @@ export async function replaceActiveReadingPlan(
   userId: string,
   draft: ReadingPlanDraft,
 ): Promise<ReadingPlan | null> {
+  // A new position stays in the same read-through.
+  return replaceActiveSegment(userId, draft, (current) => current);
+}
+
+/**
+ * Starts the next time through the Bible (web only, bibletrackerweb#18): the same
+ * close-then-insert as a position change, one read-through on. Nothing is deleted;
+ * plan progress simply counts the new read-through from here.
+ */
+export async function startNextReadThrough(
+  userId: string,
+  draft: ReadingPlanDraft,
+  /**
+   * The read-through the caller saw finished. Checked under the lock, so two devices
+   * finishing at once start one new read-through, not two.
+   */
+  fromReadThrough: number,
+): Promise<ReadingPlan | null> {
+  return replaceActiveSegment(
+    userId,
+    draft,
+    (current) => current + 1,
+    fromReadThrough,
+  );
+}
+
+async function replaceActiveSegment(
+  userId: string,
+  draft: ReadingPlanDraft,
+  nextReadThrough: (current: number) => number,
+  expectedReadThrough?: number,
+): Promise<ReadingPlan | null> {
   return db.$transaction(async (tx) => {
     await lockReader(tx, userId);
+    const active = await findActivePlan(tx, userId);
+    if (active === null) return null;
+    if (
+      expectedReadThrough !== undefined &&
+      active.readThrough !== expectedReadThrough
+    ) {
+      return null;
+    }
     // The outgoing segment governs up to the day before the new one begins. When both
     // start on the same day it ends up with end_date < start_date, which matches no
     // date at all: exactly the intent, and completions recorded against it stay put.
     const closeOn = toDbDate(addDaysToDateKey(draft.startDate, -1));
-    const closed = await tx.readingPlan.updateMany({
+    await tx.readingPlan.updateMany({
       where: { userId, isActive: true },
       data: { isActive: false, endDate: closeOn },
     });
-    if (closed.count === 0) return null;
     return toPlan(
-      await tx.readingPlan.create({ data: planData(userId, draft) }),
+      await tx.readingPlan.create({
+        data: planData(userId, draft, nextReadThrough(active.readThrough)),
+      }),
     );
   });
 }

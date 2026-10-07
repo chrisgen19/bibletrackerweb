@@ -19,6 +19,12 @@ export interface ReadingPlan {
   readonly isActive: boolean;
   /** Last day this segment governs, inclusive. `null` while the segment is open-ended. */
   readonly endDate: DateKey | null;
+  /**
+   * Web only (bibletrackerweb#18): which time through the Bible this segment belongs to.
+   * Plan progress counts the current read-through only. Absent means 1, which is every
+   * plan the iOS app writes.
+   */
+  readonly readThrough?: number;
 }
 
 /** A completion event. Book/chapter are snapshotted so history survives plan changes. */

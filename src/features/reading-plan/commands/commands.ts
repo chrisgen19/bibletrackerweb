@@ -1,6 +1,11 @@
 import "server-only";
 
 import { getCanonIndex } from "@/data/bible/canon-index";
+import {
+  buildNextReadThroughDraft,
+  getReadThrough,
+  isCurrentReadThroughFinished,
+} from "@/features/reading-plan/domain/read-through";
 import { resolvePlanForDate } from "@/features/reading-plan/domain/schedule";
 import {
   createReadingPlan,
@@ -17,6 +22,7 @@ import {
   setAppearancePreference,
   setReadingExtra,
   setTimeZone,
+  startNextReadThrough,
 } from "@/lib/dal";
 import { compareDateKeys } from "@/utils/date-key";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -26,6 +32,7 @@ import {
   completeReadingInput,
   setAppearanceInput,
   setReadingExtraInput,
+  startNextReadThroughInput,
   startPlanInput,
   syncTimeZoneInput,
   undoReadingEntryInput,
@@ -177,6 +184,38 @@ export async function setReadingExtraFor(
   const input = setReadingExtraInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
   await setReadingExtra(userId, input.data.id, input.data.isExtra);
+  return withSnapshot(userId);
+}
+
+/**
+ * Starts the next time through the Bible from Genesis 1, today in the reader's zone
+ * (web only, bibletrackerweb#18). Refused until the current read-through is finished,
+ * checked here against the stored readings rather than trusting the browser.
+ */
+export async function startNextReadThroughFor(
+  userId: string,
+  raw: unknown,
+): Promise<ReadingResult> {
+  const input = startNextReadThroughInput.safeParse(raw);
+  if (!input.success) return fail("invalid-input");
+
+  const { plans, activePlan, completions } = await getReadingSnapshot(userId);
+  if (activePlan === null) return fail("no-plan");
+  if (!isCurrentReadThroughFinished(plans, activePlan, completions)) {
+    return fail("not-finished");
+  }
+
+  const draft = buildNextReadThroughDraft(
+    activePlan,
+    getTodayDateKeyInZone(input.data.timeZone),
+  );
+  // Null when another device moved on first: refuse, and the screen catches up.
+  const started = await startNextReadThrough(
+    userId,
+    draft,
+    getReadThrough(activePlan),
+  );
+  if (started === null) return fail("not-finished");
   return withSnapshot(userId);
 }
 

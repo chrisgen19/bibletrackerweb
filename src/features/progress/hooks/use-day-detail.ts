@@ -3,6 +3,10 @@ import { useMemo } from "react";
 import type { BibleReference } from "@/data/bible/canon";
 import { getCanonIndex } from "@/data/bible/canon-index";
 import { getChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
+import {
+  getReadThrough,
+  selectProgressCompletions,
+} from "@/features/reading-plan/domain/read-through";
 import { classifyCustomReading } from "@/features/reading-plan/domain/reading-kind";
 import { getChapterCompletionDate } from "@/features/reading-plan/domain/reading-position";
 import { getDayReading } from "@/features/reading-plan/domain/schedule";
@@ -26,7 +30,7 @@ export function useDayDetail(
   const data = useReadingData();
   const {
     plans,
-    planReadings: completions,
+    progressReadings,
     planCompletionLookup,
     completionLookup,
     planScheduleContext: scheduleContext,
@@ -39,6 +43,22 @@ export function useDayDetail(
     [isValid, date, plans, scheduleContext],
   );
   const canonId = day?.plan?.canonId ?? "protestant";
+
+  /**
+   * Progress as the viewed day's read-through saw it, so a day from an earlier time
+   * through the Bible still reads as completed once a new read-through has begun.
+   */
+  const completions = useMemo(
+    () =>
+      day === null || day.plan === null
+        ? progressReadings
+        : selectProgressCompletions(
+            plans,
+            data.completions,
+            getReadThrough(day.plan),
+          ),
+    [day, plans, data.completions, progressReadings],
+  );
 
   /**
    * Progress on the day's single scheduled chapter, across every day it was touched.
@@ -87,7 +107,7 @@ export function useDayDetail(
     classifyReading: (reference: BibleReference) =>
       classifyCustomReading({
         reference,
-        planReadings: completions,
+        planReadings: progressReadings,
         unread: scheduleContext.unread,
         plan: data.activePlan,
         index,

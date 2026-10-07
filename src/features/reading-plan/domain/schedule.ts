@@ -69,6 +69,13 @@ export interface ScheduleContext {
    * while the days leading up to it still counted.
    */
   readonly canonFinishedOn: DateKey | null;
+  /**
+   * Web only (bibletrackerweb#18): the day each read-through finished, by number. When
+   * present, a date is judged against the finish of the read-through governing it, so
+   * the days between finishing one read-through and starting the next stay finished
+   * instead of turning into missed days once a new read-through begins.
+   */
+  readonly finishedOnByReadThrough?: ReadonlyMap<number, DateKey>;
   /** Chapters read in full, so slots past the cached queue can be derived on demand. */
   readonly completedKeys: ReadonlySet<string>;
   /** The plan governing today, whose canon and start reference define the queue. */
@@ -90,10 +97,6 @@ export function createScheduleContext(
   progressCompletions: readonly ReadingCompletion[] = completions,
 ): ScheduleContext {
   const byDate = createCompletionLookup(completions);
-  const progressByDate =
-    progressCompletions === completions
-      ? byDate
-      : createCompletionLookup(progressCompletions);
   // Resolve the plan first: the canon belongs to the plan in force now, not to
   // whichever segment happens to be oldest.
   const active =
@@ -118,7 +121,11 @@ export function createScheduleContext(
             progressCompletions,
           ),
     today,
-    todayRecorded: progressByDate.has(today),
+    // An extra reading does not use today's slot; any other reading does, including one
+    // that closed the previous read-through. Without extras this is `byDate.has(today)`.
+    todayRecorded: (byDate.get(today) ?? []).some(
+      (completion) => completion.isExtra !== true,
+    ),
     canonFinishedOn:
       finished && active !== null
         ? getCanonFinishedOn(active, progressCompletions, index)
@@ -194,10 +201,8 @@ export function calculateReadingForDate(
   }
 
   // Once nothing is owed, every later day is finished rather than missed.
-  if (
-    context.canonFinishedOn !== null &&
-    compareDateKeys(date, context.canonFinishedOn) > 0
-  ) {
+  const finishedOn = finishedOnFor(plan, context);
+  if (finishedOn !== null && compareDateKeys(date, finishedOn) > 0) {
     return { kind: "canon-complete" };
   }
 
@@ -356,8 +361,23 @@ export function isScheduledDay(
   date: DateKey,
   context: ScheduleContext,
 ): boolean {
-  if (resolvePlanForDate(plans, date) === null) return false;
+  const plan = resolvePlanForDate(plans, date);
+  if (plan === null) return false;
   if (context.byDate.has(date)) return true;
-  if (context.canonFinishedOn === null) return true;
-  return compareDateKeys(date, context.canonFinishedOn) <= 0;
+  const finishedOn = finishedOnFor(plan, context);
+  if (finishedOn === null) return true;
+  return compareDateKeys(date, finishedOn) <= 0;
+}
+
+/**
+ * The finish line for a day governed by `plan`: its read-through's, when the context
+ * tracks them (web only), otherwise the context's single `canonFinishedOn`.
+ */
+function finishedOnFor(
+  plan: ReadingPlan,
+  context: ScheduleContext,
+): DateKey | null {
+  const byReadThrough = context.finishedOnByReadThrough;
+  if (byReadThrough === undefined) return context.canonFinishedOn;
+  return byReadThrough.get(plan.readThrough ?? 1) ?? null;
 }

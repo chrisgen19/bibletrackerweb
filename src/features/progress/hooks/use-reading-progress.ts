@@ -11,11 +11,12 @@ import { useTodayReading } from "@/features/reading-plan/hooks/use-today-reading
 
 /**
  * What the progress screen shows beside the calendar, as bibletrackerapp derives it.
- * Chapter progress counts plan readings only: an extra reading is never "still to
- * finish" and is not a chapter read toward the plan.
+ * Chapter progress counts the current read-through's plan readings only: an extra
+ * reading, or one from an earlier time through the Bible, is never "still to finish"
+ * and is not a chapter read in this read-through.
  */
 export function useReadingProgress() {
-  const { planReadings: completions, activePlan } = useReadingData();
+  const { progressReadings: completions, activePlan } = useReadingData();
   const todayReading = useTodayReading();
   const canonIndex = useMemo(
     () => getCanonIndex(activePlan?.canonId ?? "protestant"),

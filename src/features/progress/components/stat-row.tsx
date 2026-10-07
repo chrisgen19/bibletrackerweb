@@ -8,10 +8,11 @@ interface Stat {
   label: string;
 }
 
-/** Supporting statistics: streak, best streak, total read. */
+/** Supporting statistics: streak, best streak, this read-through, times through. */
 export function StatRow({ stats }: { stats: readonly Stat[] }) {
   return (
-    <ul className="grid grid-cols-3 gap-3">
+    // Two by two on a phone, one row from 640px.
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {stats.map(({ icon: Icon, value, label }) => (
         <li key={label}>
           <Panel padded={false} className="h-full px-3 py-4">
