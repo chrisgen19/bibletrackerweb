@@ -1,9 +1,11 @@
 // Web-only (bibletrackerweb#18): read-throughs are not in bibletrackerapp yet.
+import { getChapterProgress } from "../chapter-progress";
 import {
   buildNextReadThroughDraft,
   getCurrentReadThrough,
   getReadThrough,
   getReadThroughFinishDates,
+  getRecordedReadThrough,
   isCurrentReadThroughFinished,
   selectProgressCompletions,
 } from "../read-through";
@@ -116,5 +118,41 @@ describe("buildNextReadThroughDraft", () => {
       startChapter: 1,
       chaptersPerDay: 3,
     });
+  });
+});
+
+describe("getRecordedReadThrough", () => {
+  // Read-through 2 started on the day read-through 1 finished, with Revelation 22.
+  const restart = { ...second, startDate: FIRST_FINISHED };
+  const plans = [first, restart];
+  const REVELATION_22 = { bookId: "REV", chapter: 22 };
+  const finishingDay = firstRun.filter(
+    (row) => row.localDate === FIRST_FINISHED,
+  );
+
+  it("is the read-through a chapter on the day was recorded in", () => {
+    expect(getRecordedReadThrough(plans, finishingDay, REVELATION_22)).toBe(1);
+  });
+
+  it("keeps the chapter that finished read-through 1 finished on the day 2 starts", () => {
+    const measuredIn = (readThrough: number) =>
+      getChapterProgress(
+        selectProgressCompletions(plans, firstRun, readThrough),
+        REVELATION_22,
+      )?.isComplete;
+
+    const recorded = getRecordedReadThrough(plans, finishingDay, REVELATION_22);
+    expect(measuredIn(recorded ?? getReadThrough(restart))).toBe(true);
+    // Measured in the read-through governing the day, it read as unread.
+    expect(measuredIn(getReadThrough(restart))).toBe(false);
+  });
+
+  it("is null for a chapter the day holds no reading of", () => {
+    expect(
+      getRecordedReadThrough(plans, finishingDay, {
+        bookId: "GEN",
+        chapter: 1,
+      }),
+    ).toBeNull();
   });
 });

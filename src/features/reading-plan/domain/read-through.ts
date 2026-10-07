@@ -1,3 +1,4 @@
+import type { BibleReference } from "@/data/bible/canon";
 import { type CanonIndex, getCanonIndex } from "@/data/bible/canon-index";
 import { compareDateKeys, type DateKey } from "@/utils/date-key";
 
@@ -7,6 +8,7 @@ import {
   getCompletedChapterKeys,
   isCanonFullyRead,
 } from "./reading-position";
+import { isSameReference } from "./reference";
 import type { ReadingCompletion, ReadingPlan, ReadingPlanDraft } from "./types";
 
 /**
@@ -51,6 +53,25 @@ export function selectProgressCompletions(
     (completion) =>
       (readThroughOf.get(completion.readingPlanId) ?? 1) === readThrough,
   );
+}
+
+/**
+ * The read-through a chapter recorded on a day counts toward, from that day's plan
+ * readings, or null when the day holds no reading of it.
+ *
+ * The day sheet measures such a chapter there rather than in the read-through governing
+ * the day: on the day a new read-through starts, the chapter that finished the last one
+ * is finished, not unread in the new one.
+ */
+export function getRecordedReadThrough(
+  plans: readonly ReadingPlan[],
+  dayReadings: readonly ReadingCompletion[],
+  reference: BibleReference,
+): number | null {
+  const recorded = dayReadings.find((row) => isSameReference(row, reference));
+  if (recorded === undefined) return null;
+  const plan = plans.find((each) => each.id === recorded.readingPlanId);
+  return plan === undefined ? 1 : getReadThrough(plan);
 }
 
 /**

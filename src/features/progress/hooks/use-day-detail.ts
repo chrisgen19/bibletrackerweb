@@ -1,19 +1,23 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import type { BibleReference } from "@/data/bible/canon";
 import { getCanonIndex } from "@/data/bible/canon-index";
 import { getChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
 import {
   getReadThrough,
+  getRecordedReadThrough,
   selectProgressCompletions,
 } from "@/features/reading-plan/domain/read-through";
 import { classifyCustomReading } from "@/features/reading-plan/domain/reading-kind";
 import { getChapterCompletionDate } from "@/features/reading-plan/domain/reading-position";
 import { getDayReading } from "@/features/reading-plan/domain/schedule";
+import type { ReadingCompletion } from "@/features/reading-plan/domain/types";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { isValidDateKey } from "@/utils/date-key";
 
 import type { DayDetailProps } from "../components/day-detail/types";
+
+const NO_ROWS: readonly ReadingCompletion[] = [];
 
 /**
  * Everything the day detail shows for `date`, from the reading data (bibletrackerapp's
@@ -44,20 +48,25 @@ export function useDayDetail(
   );
   const canonId = day?.plan?.canonId ?? "protestant";
 
+  const rows =
+    day === null ? NO_ROWS : (planCompletionLookup.get(day.date) ?? NO_ROWS);
+
   /**
-   * Progress as the viewed day's read-through saw it, so a day from an earlier time
-   * through the Bible still reads as completed once a new read-through has begun.
+   * The readings a chapter's progress is measured against: those of the read-through it
+   * was recorded in on this day, else the viewed day's. A day from an earlier time
+   * through the Bible still reads as completed once a new read-through has begun, and on
+   * the day one starts, the chapter that finished the last one is not unread in it.
    */
-  const completions = useMemo(
-    () =>
-      day === null || day.plan === null
+  const completionsFor = useCallback(
+    (reference: BibleReference) => {
+      const readThrough =
+        getRecordedReadThrough(plans, rows, reference) ??
+        (day === null || day.plan === null ? null : getReadThrough(day.plan));
+      return readThrough === null
         ? progressReadings
-        : selectProgressCompletions(
-            plans,
-            data.completions,
-            getReadThrough(day.plan),
-          ),
-    [day, plans, data.completions, progressReadings],
+        : selectProgressCompletions(plans, data.completions, readThrough);
+    },
+    [day, rows, plans, data.completions, progressReadings],
   );
 
   /**
@@ -69,8 +78,12 @@ export function useDayDetail(
     const chapters = day.scheduled.chapters;
     const only = chapters.length === 1 ? chapters[0] : undefined;
     if (only === undefined) return null;
-    return getChapterProgress(completions, only, getCanonIndex(canonId));
-  }, [day, completions, canonId]);
+    return getChapterProgress(
+      completionsFor(only),
+      only,
+      getCanonIndex(canonId),
+    );
+  }, [day, completionsFor, canonId]);
 
   /**
    * Arriving from the unfinished list: open Custom with that chapter selected, so the
@@ -99,7 +112,7 @@ export function useDayDetail(
     onUndoEntry: data.undoReadingEntry,
     onChangePlan: data.changePlan,
     completions: planCompletionLookup,
-    rows: planCompletionLookup.get(day.date) ?? [],
+    rows,
     extraRows: (completionLookup.get(day.date) ?? []).filter(
       (row) => row.isExtra === true,
     ),
@@ -114,9 +127,9 @@ export function useDayDetail(
       }),
     progress,
     getProgressFor: (reference: BibleReference) =>
-      getChapterProgress(completions, reference, index),
+      getChapterProgress(completionsFor(reference), reference, index),
     getCompletedOnFor: (reference: BibleReference) =>
-      getChapterCompletionDate(completions, reference, index),
+      getChapterCompletionDate(completionsFor(reference), reference, index),
     // The head of the unread queue: where the reader actually is.
     currentPosition: scheduleContext.unread[0] ?? null,
     focusChapter,
