@@ -117,6 +117,7 @@ export function useDayDetail(
       (row) => row.isExtra === true,
     ),
     onSetExtra: data.setReadingExtra,
+    onCountTowardPlan: data.countTowardPlan,
     classifyReading: (reference: BibleReference) =>
       classifyCustomReading({
         reference,

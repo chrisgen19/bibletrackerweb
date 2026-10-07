@@ -55,6 +55,7 @@ function renderDetail(day: DayReading, handlers: Partial<DayDetailProps> = {}) {
     rows: [],
     extraRows: [],
     onSetExtra: vi.fn(),
+    onCountTowardPlan: vi.fn(),
     classifyReading: () => "plan",
     progress: null,
     getProgressFor: () => null,
@@ -106,32 +107,36 @@ describe("DayDetail: a Custom reading far from the plan", () => {
   });
 
   it("changes nothing when kept as extra", () => {
-    const { onChangePlan, onSetExtra } = logRevelation5();
+    const { onChangePlan, onSetExtra, onCountTowardPlan } = logRevelation5();
     press("keep-extra");
+    expect(onChangePlan).not.toHaveBeenCalled();
+    expect(onSetExtra).not.toHaveBeenCalled();
+    expect(onCountTowardPlan).not.toHaveBeenCalled();
+  });
+
+  // Review on #19 (Codex): one write, so the reading only joins once the plan has moved.
+  it("moves the plan on and brings the reading into it as one write", () => {
+    const { onComplete, onChangePlan, onSetExtra, onCountTowardPlan } =
+      logRevelation5();
+    const [, , options] = vi.mocked(onComplete).mock.calls[0] ?? [];
+    press("count-toward-plan");
+    expect(onCountTowardPlan).toHaveBeenCalledWith(
+      options?.ids?.[0],
+      expect.objectContaining({ startBookId: "REV", startChapter: 6 }),
+    );
     expect(onChangePlan).not.toHaveBeenCalled();
     expect(onSetExtra).not.toHaveBeenCalled();
   });
 
-  it("moves the plan on and brings the reading into it when accepted", () => {
-    const { onComplete, onChangePlan, onSetExtra } = logRevelation5();
-    const [, , options] = vi.mocked(onComplete).mock.calls[0] ?? [];
-    press("count-toward-plan");
-    expect(onChangePlan).toHaveBeenCalledWith(
-      expect.objectContaining({ startBookId: "REV", startChapter: 6 }),
-    );
-    expect(onSetExtra).toHaveBeenCalledWith(options?.ids?.[0], false);
-  });
-
   it("only offers to count it when there is nothing to carry on to", () => {
-    const { onChangePlan, onSetExtra } = renderDetail(makeDay(), {
+    const { onCountTowardPlan } = renderDetail(makeDay(), {
       focusChapter: { bookId: "REV", chapter: 22 },
       classifyReading: () => "extra",
     });
     press("log-custom-reading");
     expect(dialogButtons()).toEqual(["Keep as extra", "Count toward plan"]);
     press("count-toward-plan");
-    expect(onChangePlan).not.toHaveBeenCalled();
-    expect(onSetExtra).toHaveBeenCalledWith(expect.any(String), false);
+    expect(onCountTowardPlan).toHaveBeenCalledWith(expect.any(String), null);
   });
 
   it("still asks the usual question for a plan reading", () => {

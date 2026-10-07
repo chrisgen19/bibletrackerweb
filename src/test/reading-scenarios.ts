@@ -37,7 +37,35 @@ export function readerPartWayThrough() {
     activePlan: plan,
     completions,
     scheduleContext: createScheduleContext([plan], completions, today),
+    planScheduleContext: createScheduleContext([plan], completions, today),
     today,
     hasCompletedOnboarding: true,
+  };
+}
+
+/**
+ * The same reader, who has logged only an extra reading today (Revelation 5), so the plan
+ * is still on Genesis 5. Shaped like the provider: the calendar's context shows the extra
+ * on its day, the plan's context does not. Review on #19 (Codex).
+ */
+export function readerWithOnlyAnExtraToday() {
+  const reader = readerPartWayThrough();
+  const extra = makeCompletion(reader.today, {
+    id: "x1",
+    bookId: "REV",
+    chapter: 5,
+    isExtra: true,
+  });
+  const completions = [...reader.completions, extra];
+  return {
+    ...reader,
+    completions,
+    scheduleContext: createScheduleContext(
+      reader.plans,
+      completions,
+      reader.today,
+      undefined,
+      reader.completions,
+    ),
   };
 }

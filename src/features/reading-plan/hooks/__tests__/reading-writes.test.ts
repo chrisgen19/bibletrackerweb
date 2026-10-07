@@ -15,6 +15,7 @@ import {
   type Command,
   READING_SNAPSHOT_KEY,
   readingWriteOptions,
+  runInOrder,
 } from "../reading-writes";
 
 const plan: ReadingPlan = {
@@ -227,5 +228,29 @@ describe("while a later write is still waiting", () => {
     await b;
     await settled();
     expect(shown()).toEqual(afterB);
+  });
+});
+
+// Review on #19 (Codex): "Move my plan" queued the plan change and the reading's switch
+// as two writes, so the reading joined the plan even when the move was refused.
+describe("runInOrder", () => {
+  const stored: ReadingResult = { ok: true, snapshot: withPlan };
+  const refused: ReadingResult = { ok: false, error: "no-plan" };
+
+  it("stops at a refused step and answers with it", async () => {
+    const second = vi.fn(async () => stored);
+
+    expect(await runInOrder(async () => refused, second)).toEqual(refused);
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  it("runs every step once each is stored, answering with the last", async () => {
+    const last: ReadingResult = { ok: true, snapshot: empty };
+    const first = vi.fn(async () => stored);
+    const second = vi.fn(async () => last);
+
+    expect(await runInOrder(first, second)).toBe(last);
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledOnce();
   });
 });
