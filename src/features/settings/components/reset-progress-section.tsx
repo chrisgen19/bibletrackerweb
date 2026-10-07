@@ -16,6 +16,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_CANON_ID, getCanonIndex } from "@/data/bible/canon-index";
+import { countChaptersRead } from "@/features/reading-plan/domain/chapter-progress";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 import {
@@ -26,8 +28,14 @@ import {
 /** Reset Progress, behind a confirmation with the iOS alert's title and button order. */
 export function ResetProgressSection() {
   const router = useRouter();
-  const { resetProgress, completions, hasCompletedOnboarding } =
+  const { resetProgress, completions, activePlan, hasCompletedOnboarding } =
     useReadingData();
+  // Chapters, as the progress screen counts them: not rows, of which a chapter read in two
+  // sittings has two and a half-read one has one.
+  const chaptersRead = countChaptersRead(
+    completions,
+    getCanonIndex(activePlan?.canonId ?? DEFAULT_CANON_ID),
+  );
   const settled = useWritesSettled();
   const [resetting, setResetting] = useState(false);
 
@@ -75,7 +83,7 @@ export function ResetProgressSection() {
         </AlertDialogContent>
       </AlertDialog>
       <p className="mt-2 text-footnote text-faint">
-        {describeResetImpact(completions.length)}
+        {describeResetImpact(chaptersRead)}
       </p>
     </section>
   );

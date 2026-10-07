@@ -36,11 +36,16 @@ export function ReadingPlanScreen() {
       ? formatReference(reading.chapters[0])
       : null;
 
-  const [position, setPosition] = useState(() => ({
-    bookId: activePlan?.startBookId ?? "GEN",
-    chapter: activePlan?.startChapter ?? 1,
-    startDate: today,
-  }));
+  // Opens on where the reader is, the value Settings shows for "Current position", not on
+  // the plan segment's first chapter.
+  const [position, setPosition] = useState(() => {
+    const here = scheduleContext.unread[0];
+    return {
+      bookId: here?.bookId ?? activePlan?.startBookId ?? "GEN",
+      chapter: here?.chapter ?? activePlan?.startChapter ?? 1,
+      startDate: today,
+    };
+  });
   const [error, setError] = useState<string | null>(null);
 
   function handleSave() {

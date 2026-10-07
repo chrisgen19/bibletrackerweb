@@ -4,6 +4,7 @@ import { FieldRow } from "@/components/field-row";
 import { Panel } from "@/components/panel";
 import { ScreenHeader } from "@/components/screen-header";
 import { SectionHeader } from "@/components/section-header";
+import { getCanonIndex } from "@/data/bible/canon-index";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
 import { formatReference } from "@/features/reading-plan/domain/reference";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
@@ -22,14 +23,16 @@ interface SettingsScreenProps {
  * the web app adds.
  */
 export function SettingsScreen({ appearance, email }: SettingsScreenProps) {
-  const { activePlan } = useReadingData();
-  const startReference =
+  const { activePlan, scheduleContext } = useReadingData();
+  // Where the reader is: the head of the unread queue, as the day detail reads it. Not
+  // the plan segment's first chapter, which stays put however much is read.
+  const position = scheduleContext.unread[0] ?? null;
+  const currentPosition =
     activePlan === null
       ? "No plan yet"
-      : formatReference({
-          bookId: activePlan.startBookId,
-          chapter: activePlan.startChapter,
-        });
+      : position === null
+        ? "Finished"
+        : formatReference(position, getCanonIndex(activePlan.canonId));
 
   return (
     <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-24">
@@ -40,7 +43,7 @@ export function SettingsScreen({ appearance, email }: SettingsScreenProps) {
         <Panel padded={false} className="overflow-hidden">
           <FieldRow
             label="Current position"
-            value={startReference}
+            value={currentPosition}
             href="/reading-plan"
             last
           />
