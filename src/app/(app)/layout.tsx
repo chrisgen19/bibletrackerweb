@@ -8,7 +8,6 @@ import { readAppearanceCookie } from "@/lib/appearance-cookie";
 import { getAppearancePreference, getReadingSnapshot } from "@/lib/dal";
 import { resolveReaderTimeZone } from "@/lib/reader-time-zone";
 import { requireUser } from "@/lib/session";
-import { DEFAULT_APPEARANCE } from "@/lib/settings";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
 
 /**
@@ -27,7 +26,9 @@ export default async function AppLayout({
     resolveReaderTimeZone(user.id),
     readAppearanceCookie(),
   ]);
-  // A device without its own appearance yet starts from the account's.
+  // A device without its own appearance yet starts from the account's, and keeps it: the
+  // cookie is set even for the default, or a later change on another device would reach
+  // this one (after a flash of the old appearance) instead of staying on that device.
   const accountAppearance =
     deviceAppearance === null ? await getAppearancePreference(user.id) : null;
 
@@ -43,8 +44,7 @@ export default async function AppLayout({
         {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
         {sheet}
         <WriteStatus />
-        {accountAppearance === null ||
-        accountAppearance === DEFAULT_APPEARANCE ? null : (
+        {accountAppearance === null ? null : (
           <AppearanceSync preference={accountAppearance} />
         )}
       </ReadingDataProvider>
