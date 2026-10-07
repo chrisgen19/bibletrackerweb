@@ -1,6 +1,6 @@
 // Review on #10 (Codex): Settings named the plan segment's first chapter as the "current
 // position", and the reset note counted stored rows as completed chapters.
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
@@ -148,12 +148,43 @@ describe("SettingsScreen", () => {
       expect(screen.queryByText(/Connect Google to sign in/)).toBeNull();
     });
 
-    it("explains a Google account with a different email", () => {
-      renderSettings({ linked: false, error: "email_does_not_match" });
+    it("shows why the last attempt failed, in the words the page chose", () => {
+      // The page maps the callback's error code on the server (googleLinkErrorMessage).
+      renderSettings({ linked: false, error: "That Google account is taken." });
 
       expect(screen.getByRole("alert").textContent).toBe(
-        "That Google account uses a different email. Connect the Google account with the same email as this one.",
+        "That Google account is taken.",
       );
+    });
+
+    // Review on #14 (CodeRabbit): Safari can restore this page from its back/forward
+    // cache after the reader backs out of Google, with the button still pending.
+    it("is usable again when the page comes back from the back/forward cache", async () => {
+      linkSocial.mockResolvedValue({
+        data: { url: "", redirect: true },
+        error: null,
+      });
+      renderSettings({ linked: false, error: null });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Connect Google" }),
+      );
+      // An ordinary page show changes nothing.
+      act(() => {
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: false }),
+        );
+      });
+      expect(screen.getByText("Opening Google...")).toBeTruthy();
+
+      act(() => {
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: true }),
+        );
+      });
+      const button = screen.getByRole("button", { name: "Connect Google" });
+      expect(button.textContent).toBe("Connect");
+      expect((button as HTMLButtonElement).disabled).toBe(false);
     });
 
     it("lets the reader try again when the request never left", async () => {

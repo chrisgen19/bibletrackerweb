@@ -4,16 +4,17 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  authErrorMessage,
-  googleLinkErrorMessage,
-} from "@/features/auth/auth-error-message";
+import { authErrorMessage } from "@/features/auth/auth-error-message";
+import { useLeavingPending } from "@/features/auth/hooks/use-leaving-pending";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 export interface GoogleLinkState {
   /** The reader can already sign in with Google. */
   readonly linked: boolean;
-  /** The error code a failed "Connect" round trip came back with, if any. */
+  /**
+   * Why the last "Connect" round trip failed, already in words: the page turns the
+   * callback's `error` code into copy on the server, so the raw value never reaches here.
+   */
   readonly error: string | null;
 }
 
@@ -25,10 +26,8 @@ export interface GoogleLinkState {
  * signed in with the password, and Google proves the same email, so both sides are known.
  */
 export function GoogleLinkRow({ linked, error }: GoogleLinkState) {
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState(
-    error === null ? null : googleLinkErrorMessage(error),
-  );
+  const [pending, setPending] = useLeavingPending();
+  const [failure, setFailure] = useState(error);
 
   async function connect() {
     setPending(true);
