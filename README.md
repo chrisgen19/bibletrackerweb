@@ -144,11 +144,12 @@ The reading logic is bibletrackerapp's, unchanged; the web adds a server round t
   current one only (`progressReadings`). Once it is finished, the progress screen offers
   **Start read-through #N**: Genesis 1 today at the same pace, closing the current
   segment and deleting nothing. The server re-checks that the read-through is finished,
-  and the DAL starts it under the reader's lock only if it is still the one that was
-  checked, so two devices start one. A position change stays in its read-through. Each
-  read-through keeps its own finish line (`finishedOnByReadThrough`), so the days between
-  finishing one and starting the next stay finished, not missed. The stats show chapters
-  this read-through and times through the Bible.
+  and the DAL asks again of the stored readings under the reader's lock, so two devices
+  start one. A position change stays in its read-through, and a reading joining the plan
+  moves to the segment governing its day. Each read-through keeps its own finish line
+  (`finishedOnByReadThrough`), so the days between finishing one and starting the next
+  stay finished, not missed; the day sheet measures a chapter in the read-through it was
+  recorded in. The stats show chapters this read-through and times through the Bible.
 
 ## Screens
 
