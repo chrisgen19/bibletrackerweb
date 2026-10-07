@@ -56,27 +56,70 @@ describe("auth form schemas", () => {
     ).toBe("reader@example.com");
   });
 
+  const signUp = {
+    firstName: "Ruth",
+    lastName: "Moabite",
+    email: "reader@example.com",
+    password: "12345678",
+    confirmPassword: "12345678",
+  };
+
   it("enforces the server's password length limits", () => {
-    const base = { name: "Reader", email: "reader@example.com" };
-    expect(
-      signUpSchema.safeParse({ ...base, password: "1234567" }).success,
-    ).toBe(false);
-    expect(
-      signUpSchema.safeParse({ ...base, password: "12345678" }).success,
-    ).toBe(true);
-    expect(
-      signUpSchema.safeParse({ ...base, password: "x".repeat(129) }).success,
-    ).toBe(false);
+    const withPassword = (password: string) => ({
+      ...signUp,
+      password,
+      confirmPassword: password,
+    });
+    expect(signUpSchema.safeParse(withPassword("1234567")).success).toBe(false);
+    expect(signUpSchema.safeParse(withPassword("12345678")).success).toBe(true);
+    expect(signUpSchema.safeParse(withPassword("x".repeat(129))).success).toBe(
+      false,
+    );
   });
 
-  it("requires a name", () => {
-    expect(
-      signUpSchema.safeParse({
-        name: "   ",
-        email: "reader@example.com",
-        password: "12345678",
-      }).success,
-    ).toBe(false);
+  it("requires a first and a last name", () => {
+    for (const blank of [{ firstName: "   " }, { lastName: "" }]) {
+      expect(signUpSchema.safeParse({ ...signUp, ...blank }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it("trims the names", () => {
+    const values = signUpSchema.parse({
+      ...signUp,
+      firstName: "  Ruth ",
+      lastName: " Moabite  ",
+    });
+    expect([values.firstName, values.lastName]).toEqual(["Ruth", "Moabite"]);
+  });
+
+  it("says when the passwords don't match, on the confirmation field", () => {
+    const result = signUpSchema.safeParse({
+      ...signUp,
+      confirmPassword: "12345679",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["confirmPassword"],
+        message: "Passwords don't match.",
+      }),
+    ]);
+  });
+
+  it("checks the match even while another field is still wrong", () => {
+    // Zod skips an object refinement once any field has failed, unless told otherwise:
+    // without that, the mismatch would only show after the email was fixed.
+    const result = signUpSchema.safeParse({
+      ...signUp,
+      email: "not an email",
+      confirmPassword: "nope",
+    });
+    expect(result.error?.issues.map((issue) => issue.path[0])).toEqual([
+      "email",
+      "confirmPassword",
+    ]);
   });
 });
 

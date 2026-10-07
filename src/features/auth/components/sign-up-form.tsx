@@ -11,7 +11,12 @@ import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
 import { authHref } from "../safe-next-path";
-import { PASSWORD_MIN, type SignUpValues, signUpSchema } from "../schemas";
+import {
+  fullName,
+  PASSWORD_MIN,
+  type SignUpValues,
+  signUpSchema,
+} from "../schemas";
 import { GoogleButton } from "./google-button";
 import { TextField } from "./text-field";
 
@@ -32,9 +37,14 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    // Signing up also signs in, so the reader goes straight on.
+    // Signing up also signs in, so the reader goes straight on. Only what Better Auth
+    // stores is sent: one name, and never the confirmation.
     const { error } = await catchNetworkFailure(() =>
-      authClient.signUp.email(values),
+      authClient.signUp.email({
+        name: fullName(values),
+        email: values.email,
+        password: values.password,
+      }),
     );
     if (error) {
       setFormError(authErrorMessage(error));
@@ -49,13 +59,22 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
   return (
     <div className="grid gap-6">
       <form onSubmit={onSubmit} noValidate className="grid gap-4">
-        <TextField
-          id="name"
-          label="Name"
-          autoComplete="name"
-          error={errors.name?.message}
-          {...register("name")}
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <TextField
+            id="firstName"
+            label="First name"
+            autoComplete="given-name"
+            error={errors.firstName?.message}
+            {...register("firstName")}
+          />
+          <TextField
+            id="lastName"
+            label="Last name"
+            autoComplete="family-name"
+            error={errors.lastName?.message}
+            {...register("lastName")}
+          />
+        </div>
         <TextField
           id="email"
           label="Email"
@@ -71,6 +90,14 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
           autoComplete="new-password"
           error={errors.password?.message}
           {...register("password")}
+        />
+        <TextField
+          id="confirmPassword"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          error={errors.confirmPassword?.message}
+          {...register("confirmPassword")}
         />
         {formError === null ? null : (
           <p role="alert" className="text-sm text-destructive">
