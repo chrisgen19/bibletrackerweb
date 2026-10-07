@@ -342,8 +342,9 @@ export interface MarkCompleteInput {
  *
  * The unique key ignores `is_extra`, so a plan reading of a chapter already logged as an
  * extra on that day and span (one moved out with "Mark as extra", say) would be skipped
- * and leave the plan untouched. That row is brought into the plan instead. An extra
- * reading never demotes a plan row.
+ * and leave the plan untouched. That row is brought into the plan instead, under this
+ * reading's plan segment, so an extra logged before a new read-through began counts
+ * toward the new one. An extra reading never demotes a plan row.
  */
 export async function markReadingComplete(
   userId: string,
@@ -381,7 +382,7 @@ export async function markReadingComplete(
     if (isExtra) return;
     await tx.readingCompletion.updateMany({
       where: { userId, localDate, isExtra: true, OR: spans },
-      data: { isExtra: false },
+      data: { isExtra: false, readingPlanId: input.readingPlanId },
     });
   });
 }
@@ -394,11 +395,14 @@ export async function setReadingExtra(
   userId: string,
   id: string,
   isExtra: boolean,
+  /** The plan segment to move it to as well. Omit to leave it where it is. */
+  readingPlanId?: string,
 ): Promise<void> {
   if (!UUID_PATTERN.test(id)) return;
   await db.readingCompletion.updateMany({
     where: { id, userId },
-    data: { isExtra },
+    data:
+      readingPlanId === undefined ? { isExtra } : { isExtra, readingPlanId },
   });
 }
 

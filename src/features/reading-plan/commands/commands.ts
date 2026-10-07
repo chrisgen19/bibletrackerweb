@@ -175,15 +175,35 @@ export async function undoReadingEntryFor(
   return withSnapshot(userId);
 }
 
-/** Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18). */
+/**
+ * Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18).
+ *
+ * A reading joining the plan also moves to the segment governing its day, as a fresh plan
+ * reading would, so an extra logged before a new read-through began counts toward the new
+ * one. Leaving the plan keeps it where it is.
+ */
 export async function setReadingExtraFor(
   userId: string,
   raw: unknown,
 ): Promise<ReadingResult> {
   const input = setReadingExtraInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
-  await setReadingExtra(userId, input.data.id, input.data.isExtra);
+  const { id, isExtra } = input.data;
+
+  const readingPlanId = isExtra ? undefined : await planIdForEntry(userId, id);
+  await setReadingExtra(userId, id, isExtra, readingPlanId);
   return withSnapshot(userId);
+}
+
+/** The segment governing an entry's day, as `completeReadingFor` picks it. */
+async function planIdForEntry(
+  userId: string,
+  id: string,
+): Promise<string | undefined> {
+  const { plans, activePlan, completions } = await getReadingSnapshot(userId);
+  const entry = completions.find((completion) => completion.id === id);
+  if (entry === undefined) return undefined;
+  return (resolvePlanForDate(plans, entry.localDate) ?? activePlan)?.id;
 }
 
 /**

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   completeReadingFor,
   resetProgressFor,
+  setReadingExtraFor,
   startNextReadThroughFor,
   startPlanFor,
 } from "@/features/reading-plan/commands/commands";
@@ -18,6 +19,7 @@ import {
   startNextReadThrough,
 } from "@/lib/dal";
 import { createTestUser, makeDraft, replacePlan } from "@/test/factories";
+import { createId } from "@/utils/id";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
 
 const TZ = "Asia/Manila";
@@ -197,5 +199,73 @@ describe("startNextReadThroughFor", () => {
       await startPlanFor(user, { draft: makeDraft() }),
     );
     expect(snapshot.activePlan?.readThrough).toBe(1);
+  });
+});
+
+describe("an extra joining the plan after a new read-through began", () => {
+  /**
+   * Genesis 1 re-read today after finishing the Bible (so logged as an extra), then
+   * read-through 2 started the same day. Returns the extra's id.
+   */
+  async function rereadThenStartNext(): Promise<string> {
+    await finishTheBible();
+    const id = createId();
+    snapshotOf(
+      await completeReadingFor(user, {
+        date: today(),
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+        ids: [id],
+        isExtra: true,
+        timeZone: TZ,
+      }),
+    );
+    snapshotOf(await startNextReadThroughFor(user, { timeZone: TZ }));
+    return id;
+  }
+
+  /** The entry's extra flag and the read-through of its segment. */
+  function placeOf(result: ReadingResult, id: string) {
+    const { plans, completions } = snapshotOf(result);
+    const entry = completions.find((completion) => completion.id === id);
+    const plan = plans.find((each) => each.id === entry?.readingPlanId);
+    return { isExtra: entry?.isExtra, readThrough: plan?.readThrough };
+  }
+
+  it("counts toward the new read-through once marked read in it", async () => {
+    const id = await rereadThenStartNext();
+
+    const result = await completeReadingFor(user, {
+      date: today(),
+      chapters: [{ bookId: "GEN", chapter: 1 }],
+      timeZone: TZ,
+    });
+
+    expect(placeOf(result, id)).toEqual({ isExtra: false, readThrough: 2 });
+  });
+
+  it("counts toward the new read-through once counted toward the plan", async () => {
+    const id = await rereadThenStartNext();
+
+    const result = await setReadingExtraFor(user, { id, isExtra: false });
+
+    expect(placeOf(result, id)).toEqual({ isExtra: false, readThrough: 2 });
+  });
+
+  it("keeps its segment when moved out of the plan", async () => {
+    await finishTheBible();
+    const [entry] = snapshotOf(
+      await startNextReadThroughFor(user, { timeZone: TZ }),
+    ).completions;
+    if (entry === undefined) throw new Error("Expected Revelation 22");
+
+    const result = await setReadingExtraFor(user, {
+      id: entry.id,
+      isExtra: true,
+    });
+
+    expect(placeOf(result, entry.id)).toEqual({
+      isExtra: true,
+      readThrough: 1,
+    });
   });
 });

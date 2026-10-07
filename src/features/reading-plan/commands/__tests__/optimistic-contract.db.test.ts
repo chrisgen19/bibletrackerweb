@@ -286,6 +286,48 @@ describe("optimistic snapshots match the server", () => {
   });
 
   // Web-only (bibletrackerweb#18).
+  it("through extras logged before the next read-through joining it", async () => {
+    await runBoth([
+      {
+        kind: "start",
+        draft: makeDraft({
+          startDate: "2026-01-01",
+          startBookId: "REV",
+          startChapter: 22,
+        }),
+      },
+      {
+        kind: "complete",
+        date: "2026-01-01",
+        chapters: [{ bookId: "REV", chapter: 22 }],
+      },
+      // Re-reads after finishing, so extras of read-through 1.
+      {
+        kind: "complete",
+        date: today,
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+        isExtra: true,
+      },
+      {
+        kind: "complete",
+        date: today,
+        chapters: [{ bookId: "GEN", chapter: 2 }],
+        isExtra: true,
+      },
+      { kind: "next-read-through" },
+      // Marked read, and counted toward the plan: both join read-through 2.
+      {
+        kind: "complete",
+        date: today,
+        chapters: [{ bookId: "GEN", chapter: 1 }],
+      },
+      { kind: "set-extra", nth: 2, isExtra: false },
+      // Moving one out again leaves it in read-through 2.
+      { kind: "set-extra", nth: 2, isExtra: true },
+    ]);
+  });
+
+  // Web-only (bibletrackerweb#18).
   it("through a plan reading of a chapter already logged as an extra", async () => {
     await runBoth([
       { kind: "start", draft: makeDraft({ startDate: "2026-01-01" }) },

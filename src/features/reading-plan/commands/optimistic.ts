@@ -170,7 +170,7 @@ export function withCompletedReading(
       ? snapshot.completions
       : snapshot.completions.map((row) =>
           row.isExtra === true && logged.has(key(row))
-            ? { ...row, isExtra: false }
+            ? { ...row, isExtra: false, readingPlanId: plan.id }
             : row,
         );
   const taken = new Set(existing.map(key));
@@ -223,7 +223,7 @@ export function withoutEntry(
   };
 }
 
-/** setReadingExtra. */
+/** setReadingExtra: a reading joining the plan moves to the segment governing its day. */
 export function withReadingExtra(
   snapshot: ReadingSnapshot,
   id: string,
@@ -231,9 +231,12 @@ export function withReadingExtra(
 ): ReadingSnapshot {
   return {
     ...snapshot,
-    completions: snapshot.completions.map((row) =>
-      row.id === id ? { ...row, isExtra } : row,
-    ),
+    completions: snapshot.completions.map((row) => {
+      if (row.id !== id) return row;
+      if (isExtra) return { ...row, isExtra };
+      const plan = planForReading(snapshot, row.localDate);
+      return { ...row, isExtra, readingPlanId: plan?.id ?? row.readingPlanId };
+    }),
   };
 }
 
