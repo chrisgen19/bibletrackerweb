@@ -3,17 +3,12 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import { getTimeZone } from "@/lib/dal";
+import { TIME_ZONE_COOKIE } from "@/lib/time-zone-cookie";
 import { isValidTimeZone } from "@/utils/zoned-date-key";
 
-/**
- * The browser's timezone, set by the `syncTimeZone` action. A cookie rather than only the
- * stored setting because "today" belongs to the device, as on iOS: a phone in Manila and
- * a laptop in Los Angeles each see their own day.
- */
-export const TIME_ZONE_COOKIE = "tz";
-
-/** About 400 days, the longest lifetime browsers allow for a cookie. */
-export const TIME_ZONE_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+// The browser's timezone lives in a cookie (see time-zone-cookie.ts) rather than only the
+// stored setting because "today" belongs to the device, as on iOS: a phone in Manila and
+// a laptop in Los Angeles each see their own day.
 
 export interface ReaderTimeZone {
   readonly timeZone: string;

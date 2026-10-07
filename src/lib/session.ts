@@ -39,13 +39,24 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
+export interface SignInMethods {
+  /** An email + password account: Settings offers to change the password. */
+  readonly password: boolean;
+  /** Google is connected: Settings shows it instead of the Connect button. */
+  readonly google: boolean;
+}
+
 /**
- * Whether the signed-in reader can already sign in with Google, as Settings shows it.
- * Asked of Better Auth, which reads the session's own accounts.
+ * How the signed-in reader can sign in, as Settings shows it. Asked of Better Auth, which
+ * reads the session's own accounts.
  */
-export async function hasGoogleAccount(): Promise<boolean> {
+export async function getSignInMethods(): Promise<SignInMethods> {
   const accounts = await auth.api.listUserAccounts({
     headers: await headers(),
   });
-  return accounts.some((account) => account.providerId === "google");
+  const providers = new Set(accounts.map((account) => account.providerId));
+  return {
+    password: providers.has("credential"),
+    google: providers.has("google"),
+  };
 }

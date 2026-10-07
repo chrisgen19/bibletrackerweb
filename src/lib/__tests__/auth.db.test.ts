@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import {
   createReadingPlan,
   getActiveReadingPlan,
+  getTimeZone,
   markReadingComplete,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
@@ -81,6 +82,44 @@ describe("sign-up", () => {
     const again = await signUp(email);
     expect(again.response.status).toBeGreaterThanOrEqual(400);
     expect(await db.user.count({ where: { email } })).toBe(1);
+  });
+
+  // The sign-up screen sets the tz cookie (DeviceTimeZone); without this the account had
+  // no zone until the app had loaded once, so its first page was worked out in UTC.
+  it("starts the account in the zone of the device it signed up on", async () => {
+    const response = await call(
+      "POST",
+      "/sign-up/email",
+      {
+        name: "Test Reader",
+        email: `reader-${createId()}@example.test`,
+        password: PASSWORD,
+      },
+      `tz=${encodeURIComponent("Asia/Manila")}`,
+    );
+    expect(response.status).toBe(200);
+    const { user } = (await response.json()) as { user: { id: string } };
+
+    expect(await getTimeZone(user.id)).toBe("Asia/Manila");
+  });
+
+  it("signs up without a zone when the cookie is missing or not a real zone", async () => {
+    const { userId } = await signUp();
+    expect(await getTimeZone(userId)).toBeNull();
+
+    const response = await call(
+      "POST",
+      "/sign-up/email",
+      {
+        name: "Test Reader",
+        email: `reader-${createId()}@example.test`,
+        password: PASSWORD,
+      },
+      "tz=Mars%2FBase",
+    );
+    expect(response.status).toBe(200);
+    const { user } = (await response.json()) as { user: { id: string } };
+    expect(await getTimeZone(user.id)).toBeNull();
   });
 
   it("refuses a password shorter than 8 characters", async () => {

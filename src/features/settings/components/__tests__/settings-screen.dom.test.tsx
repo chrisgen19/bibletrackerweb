@@ -4,6 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
+import { router } from "@/test/dom-setup";
 import { readerPartWayThrough } from "@/test/reading-scenarios";
 
 import { SettingsScreen } from "../settings-screen";
@@ -21,20 +22,26 @@ vi.mock("@/actions/reading", () => ({ setAppearance: vi.fn() }));
 vi.mock("@/features/auth/components/sign-out-button", () => ({
   SignOutButton: () => null,
 }));
-const { linkSocial } = vi.hoisted(() => ({ linkSocial: vi.fn() }));
+const { linkSocial, updateUser, changePassword } = vi.hoisted(() => ({
+  linkSocial: vi.fn(),
+  updateUser: vi.fn(),
+  changePassword: vi.fn(),
+}));
 vi.mock("@/lib/auth-client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth-client")>()),
-  authClient: { linkSocial },
+  authClient: { linkSocial, updateUser, changePassword },
 }));
 
 type Google = ComponentProps<typeof SettingsScreen>["google"];
 
-function renderSettings(google: Google = null) {
+function renderSettings(google: Google = null, hasPassword = true) {
   data.current = { ...readerPartWayThrough(), resetProgress: vi.fn() };
   render(
     <SettingsScreen
       appearance="system"
+      name="Ruth Moabite"
       email="reader@example.test"
+      hasPassword={hasPassword}
       google={google}
     />,
   );
@@ -59,7 +66,9 @@ describe("SettingsScreen", () => {
     render(
       <SettingsScreen
         appearance="system"
+        name="Ruth Moabite"
         email="reader@example.test"
+        hasPassword
         google={null}
       />,
     );
@@ -103,6 +112,137 @@ describe("SettingsScreen", () => {
     expect(
       screen.getByText("This will remove 4 completed chapters."),
     ).toBeTruthy();
+  });
+
+  describe("Name", () => {
+    beforeEach(() => {
+      updateUser.mockReset();
+      router.refresh.mockReset();
+    });
+
+    async function rename(to: string) {
+      renderSettings();
+      const user = userEvent.setup();
+      await user.click(
+        screen.getByRole("button", { name: "Name, Ruth Moabite" }),
+      );
+      const field = screen.getByLabelText("Name");
+      expect((field as HTMLInputElement).value).toBe("Ruth Moabite");
+      await user.clear(field);
+      if (to !== "") await user.type(field, to);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+    }
+
+    it("saves the new name and reloads what shows it", async () => {
+      updateUser.mockResolvedValue({ data: { status: true }, error: null });
+      await rename("  Ruth of Moab ");
+
+      expect(updateUser).toHaveBeenCalledExactlyOnceWith({
+        name: "Ruth of Moab",
+      });
+      expect(router.refresh).toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("asks for a name rather than saving an empty one", async () => {
+      await rename("");
+
+      expect(await screen.findByText("Enter your name.")).toBeTruthy();
+      expect(updateUser).not.toHaveBeenCalled();
+    });
+
+    it("stays open and says so when the save never left", async () => {
+      updateUser.mockRejectedValue(new TypeError("Failed to fetch"));
+      await rename("Ruth of Moab");
+
+      expect(screen.getByRole("alert").textContent).toMatch(
+        /Check your connection/,
+      );
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+  });
+
+  describe("Password", () => {
+    beforeEach(() => {
+      changePassword.mockReset();
+    });
+
+    async function change(current: string, next: string, confirm: string) {
+      renderSettings();
+      const user = userEvent.setup();
+      await user.click(
+        screen.getByRole("button", { name: "Password, Change" }),
+      );
+      await user.type(screen.getByLabelText("Current password"), current);
+      await user.type(
+        screen.getByLabelText("New password (at least 8 characters)"),
+        next,
+      );
+      await user.type(screen.getByLabelText("Confirm new password"), confirm);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+    }
+
+    it("is not offered to an account that signs in only with Google", () => {
+      renderSettings({ linked: true, error: null }, false);
+
+      expect(
+        screen.queryByRole("button", { name: "Password, Change" }),
+      ).toBeNull();
+    });
+
+    it("changes it and signs out the reader's other devices", async () => {
+      changePassword.mockResolvedValue({ data: {}, error: null });
+      await change("gleaning-barley", "threshing-floor", "threshing-floor");
+
+      expect(changePassword).toHaveBeenCalledExactlyOnceWith({
+        currentPassword: "gleaning-barley",
+        newPassword: "threshing-floor",
+        revokeOtherSessions: true,
+      });
+      expect(await screen.findByText("Password changed")).toBeTruthy();
+    });
+
+    it("stops at a confirmation that doesn't match", async () => {
+      await change("gleaning-barley", "threshing-floor", "threshing-flour");
+
+      expect(await screen.findByText("Passwords don't match.")).toBeTruthy();
+      expect(changePassword).not.toHaveBeenCalled();
+    });
+
+    it("points at the current password when it is wrong", async () => {
+      changePassword.mockResolvedValue({
+        data: null,
+        error: { code: "INVALID_PASSWORD", status: 400, statusText: "" },
+      });
+      await change("not-my-password", "threshing-floor", "threshing-floor");
+
+      expect(
+        await screen.findByText("That isn't your current password."),
+      ).toBeTruthy();
+      expect(
+        screen.getByLabelText("Current password").getAttribute("aria-invalid"),
+      ).toBe("true");
+      expect(screen.queryByText("Password changed")).toBeNull();
+    });
+  });
+
+  // Review on #16 (Codex): Radix returns focus to a DialogTrigger, and these rows open
+  // their dialogs themselves, so closing one dropped keyboard focus on the page body.
+  it.each([
+    "Name, Ruth Moabite",
+    "Password, Change",
+  ])("gives focus back to %s when its dialog closes", async (name) => {
+    renderSettings();
+    const user = userEvent.setup();
+    const row = screen.getByRole("button", { name });
+
+    row.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(row);
   });
 
   // Production feedback after #13: Google sign-in for an existing password account

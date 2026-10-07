@@ -6,7 +6,7 @@ import { SettingsScreen } from "@/features/settings/components/settings-screen";
 import { readAppearanceCookie } from "@/lib/appearance-cookie";
 import { googleSignInEnabled } from "@/lib/auth";
 import { getAppearancePreference } from "@/lib/dal";
-import { hasGoogleAccount, requireUser } from "@/lib/session";
+import { getSignInMethods, requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -18,11 +18,12 @@ export default async function SettingsPage({
   // This device's choice, else the account's: what the page is rendering right now.
   const appearance =
     (await readAppearanceCookie()) ?? (await getAppearancePreference(user.id));
+  const methods = await getSignInMethods();
   // A failed "Connect Google" comes back as ?google=failed&error=<code>. The code is only
   // ever a key for fixed copy, turned into words here, as the sign-in page does.
   const google = googleSignInEnabled
     ? {
-        linked: await hasGoogleAccount(),
+        linked: methods.google,
         error:
           firstParam(params.google) === "failed"
             ? googleLinkErrorMessage(firstParam(params.error) ?? "")
@@ -32,7 +33,9 @@ export default async function SettingsPage({
   return (
     <SettingsScreen
       appearance={appearance}
+      name={user.name}
       email={user.email}
+      hasPassword={methods.password}
       google={google}
     />
   );
