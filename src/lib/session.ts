@@ -38,3 +38,14 @@ export async function requireUser(): Promise<SessionUser> {
   if (user === null) redirect("/sign-in");
   return user;
 }
+
+/**
+ * Whether the signed-in reader can already sign in with Google, as Settings shows it.
+ * Asked of Better Auth, which reads the session's own accounts.
+ */
+export async function hasGoogleAccount(): Promise<boolean> {
+  const accounts = await auth.api.listUserAccounts({
+    headers: await headers(),
+  });
+  return accounts.some((account) => account.providerId === "google");
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { authErrorMessage, oauthErrorMessage } from "../auth-error-message";
+import {
+  authErrorMessage,
+  googleLinkErrorMessage,
+  oauthErrorMessage,
+} from "../auth-error-message";
 import { signInSchema, signUpSchema } from "../schemas";
 
 describe("authErrorMessage", () => {
@@ -29,10 +33,10 @@ describe("authErrorMessage", () => {
 });
 
 describe("oauthErrorMessage", () => {
-  it("points an unlinked Google sign-in at the existing password account", () => {
+  it("points an unlinked Google sign-in at the password, then Settings", () => {
     // Better Auth's callback reports "account not linked" as error=account_not_linked.
     expect(oauthErrorMessage("account_not_linked")).toBe(
-      "An account with this email already exists. Sign in with your password instead.",
+      "An account with this email already exists. Sign in with your password, then connect Google in Settings to use it next time.",
     );
   });
 
@@ -73,5 +77,21 @@ describe("auth form schemas", () => {
         password: "12345678",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("googleLinkErrorMessage", () => {
+  it("names each way connecting Google can fail", () => {
+    expect(googleLinkErrorMessage("email_does_not_match")).toMatch(
+      /different email/,
+    );
+    expect(
+      googleLinkErrorMessage("account_already_linked_to_different_user"),
+    ).toMatch(/another Bible Daily account/);
+    // The reader cancelled on Google's screen.
+    expect(googleLinkErrorMessage("access_denied")).toMatch(/wasn't connected/);
+    expect(googleLinkErrorMessage("unable_to_link_account")).toBe(
+      "Google couldn't be connected. Try again.",
+    );
   });
 });
