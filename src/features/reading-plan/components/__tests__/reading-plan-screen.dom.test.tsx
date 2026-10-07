@@ -3,13 +3,27 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { readerPartWayThrough } from "@/test/reading-scenarios";
+import {
+  readerPartWayThrough,
+  readerWithOnlyAnExtraToday,
+} from "@/test/reading-scenarios";
 
 import { ReadingPlanScreen } from "../reading-plan-screen";
 
+const scenario = vi.hoisted(() => ({ onlyAnExtraToday: false }));
+
 vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
-  useReadingData: () => ({ ...readerPartWayThrough(), changePlan: vi.fn() }),
+  useReadingData: () => ({
+    ...(scenario.onlyAnExtraToday
+      ? readerWithOnlyAnExtraToday()
+      : readerPartWayThrough()),
+    changePlan: vi.fn(),
+  }),
 }));
+
+afterEach(() => {
+  scenario.onlyAnExtraToday = false;
+});
 
 describe("ReadingPlanScreen", () => {
   it("opens on where the reader is", () => {
@@ -54,5 +68,16 @@ describe("ReadingPlanScreen", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(row.textContent).toContain("Exodus");
     expect(document.activeElement).toBe(row);
+  });
+
+  // Review on #19 (Codex): the screen read the calendar's context, so a day holding only
+  // an extra reading showed that extra as today's reading.
+  it("shows the plan's chapter as today's reading, not an extra", () => {
+    scenario.onlyAnExtraToday = true;
+    render(<ReadingPlanScreen />);
+
+    const today = screen.getByText("READING TODAY").parentElement;
+    expect(today?.textContent).toContain("Genesis 5");
+    expect(today?.textContent).not.toContain("Revelation 5");
   });
 });

@@ -26,7 +26,13 @@ import { ReadingPositionFields } from "./reading-position-fields";
  */
 export function ReadingPlanScreen() {
   const router = useRouter();
-  const { activePlan, today, changePlan, scheduleContext } = useReadingData();
+  // The plan's view: a day holding only an extra reading still reads as its plan chapter.
+  const {
+    activePlan,
+    today,
+    changePlan,
+    planScheduleContext: scheduleContext,
+  } = useReadingData();
   const reading =
     activePlan === null
       ? null
