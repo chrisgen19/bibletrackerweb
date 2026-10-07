@@ -17,11 +17,11 @@ import type {
   SettingResult,
 } from "@/features/reading-plan/commands/results";
 import { APPEARANCE_COOKIE, APPEARANCE_COOKIE_MAX_AGE } from "@/lib/appearance";
+import { requireUser } from "@/lib/session";
 import {
   TIME_ZONE_COOKIE,
   TIME_ZONE_COOKIE_MAX_AGE,
-} from "@/lib/reader-time-zone";
-import { requireUser } from "@/lib/session";
+} from "@/lib/time-zone-cookie";
 
 // Server Actions are public POST endpoints: each one checks the session itself, and the
 // commands parse their input again. The logic lives in

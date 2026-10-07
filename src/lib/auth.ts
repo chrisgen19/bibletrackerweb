@@ -4,8 +4,11 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 
+import { setTimeZone } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { TIME_ZONE_COOKIE } from "@/lib/time-zone-cookie";
+import { isValidTimeZone } from "@/utils/zoned-date-key";
 
 /** True when Google credentials are configured; the sign-in screens hide the button otherwise. */
 export const googleSignInEnabled =
@@ -45,6 +48,28 @@ export const auth = betterAuth({
           },
         }
       : {},
+  databaseHooks: {
+    user: {
+      create: {
+        // A new account starts in the zone of the device it signed up on, which the
+        // sign-up screen puts in a cookie (DeviceTimeZone). Runs after the user is
+        // committed, for email and Google sign-up alike. Best effort: the browser
+        // reports its zone again once the app loads, so a failure here only logs.
+        after: async (user, ctx) => {
+          const zone = ctx?.getCookie(TIME_ZONE_COOKIE);
+          if (zone == null || !isValidTimeZone(zone)) return;
+          try {
+            await setTimeZone(user.id, zone);
+          } catch (error) {
+            ctx?.context.logger.error(
+              "Could not store the new account's timezone",
+              error,
+            );
+          }
+        },
+      },
+    },
+  },
   // Lets Server Actions set the session cookie. Better Auth requires it to be last.
   plugins: [nextCookies()],
 });
