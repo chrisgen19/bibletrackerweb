@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 
-import { APPEARANCE_COOKIE, APPEARANCE_COOKIE_MAX_AGE } from "@/lib/appearance";
+import {
+  APPEARANCE_COOKIE,
+  APPEARANCE_COOKIE_MAX_AGE,
+  applyAppearance,
+} from "@/lib/appearance";
 import type { AppearancePreference } from "@/lib/settings";
 
 /**
@@ -15,7 +19,7 @@ export function AppearanceSync({
   preference: AppearancePreference;
 }) {
   useEffect(() => {
-    document.documentElement.dataset.appearance = preference;
+    applyAppearance(preference);
     // biome-ignore lint/suspicious/noDocumentCookie: a plain preference cookie, also set by the setAppearance action
     document.cookie = `${APPEARANCE_COOKIE}=${preference}; path=/; max-age=${APPEARANCE_COOKIE_MAX_AGE}; samesite=lax`;
   }, [preference]);

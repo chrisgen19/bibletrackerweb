@@ -47,6 +47,7 @@ export function UnfinishedList({
               >
                 <Link
                   href={`/day/${today}?book=${reference.bookId}&chapter=${reference.chapter}`}
+                  aria-label={`${label}, verses ${formatVerseRanges(remaining)} left`}
                   className="flex min-h-11 items-center gap-3 px-5 py-3 outline-none transition-colors hover:bg-muted focus-visible:bg-muted active:bg-pressed"
                 >
                   <span className="flex-1">
