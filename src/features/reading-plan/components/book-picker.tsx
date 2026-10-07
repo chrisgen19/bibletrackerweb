@@ -1,6 +1,12 @@
 "use client";
 
-import { type KeyboardEvent, useId, useMemo, useState } from "react";
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 
 import type { BibleBook } from "@/data/bible/canon";
 import { getCanonIndex } from "@/data/bible/canon-index";
@@ -14,6 +20,8 @@ interface BookPickerProps {
   selectedBookId: string;
   onSelect: (book: BibleBook) => void;
   onClose: () => void;
+  /** The row that opened the picker, which gets the focus back when it closes. */
+  returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 function matches(book: BibleBook, query: string): boolean {
@@ -35,6 +43,7 @@ export function BookPicker({
   selectedBookId,
   onSelect,
   onClose,
+  returnFocusRef,
 }: BookPickerProps) {
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -70,6 +79,7 @@ export function BookPicker({
       onClose={onClose}
       title="Choose a book"
       closeLabel="Close book picker"
+      returnFocusRef={returnFocusRef}
       toolbar={
         <div className="px-5 pt-3">
           <input

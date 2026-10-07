@@ -2,6 +2,7 @@
 // the "Continue from here?" AlertDialog on the web, so pressing its buttons is a click and
 // "no alert" means no alertdialog on the page.
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { makePlan } from "@/features/reading-plan/domain/__tests__/fixtures";
 import type { ChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
 import { createCompletionLookup } from "@/features/reading-plan/domain/schedule";
@@ -784,5 +785,29 @@ describe("DayDetail: removing a mistaken reading", () => {
     press("remove-entry-row-0");
 
     expect(onUndoEntry).toHaveBeenCalledWith("row-0");
+  });
+});
+
+// The same gap Codex found on #16's account dialogs: Radix returns focus to a
+// DialogTrigger, and these rows open their pickers themselves, so closing one dropped
+// keyboard focus on the page body.
+describe("DayDetail: pickers give focus back", () => {
+  it.each([
+    ["the verse row", "field-to-verse", false],
+    ["the custom Book row", "custom-field-book", true],
+    ["the custom Chapter row", "custom-field-chapter", true],
+  ])("to %s when closed", async (_name, testId, custom) => {
+    renderDetail(makeDay(), { progress: progressFor([]) });
+    if (custom) press("day-tab-custom");
+    const user = userEvent.setup();
+    const row = screen.getByTestId(testId);
+
+    row.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(row);
   });
 });

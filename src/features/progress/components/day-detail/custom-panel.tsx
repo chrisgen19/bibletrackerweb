@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { FieldRow } from "@/components/field-row";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ export function CustomPanel(props: CustomPanelProps) {
     initialCustomReference({ ...props, index }),
   );
   const [picker, setPicker] = useState<"book" | "chapter" | null>(null);
+  const bookRow = useRef<HTMLButtonElement>(null);
+  const chapterRow = useRef<HTMLButtonElement>(null);
   const [offer, setOffer] = useState<{
     draft: ReadingPlanDraft;
     message: string;
@@ -69,12 +71,14 @@ export function CustomPanel(props: CustomPanelProps) {
       </p>
       <div className="mt-3 overflow-hidden rounded-xl bg-muted">
         <FieldRow
+          ref={bookRow}
           label="Book"
           value={book?.name ?? reference.bookId}
           onClick={() => setPicker("book")}
           testId="custom-field-book"
         />
         <FieldRow
+          ref={chapterRow}
           label="Chapter"
           value={String(reference.chapter)}
           onClick={() => setPicker("chapter")}
@@ -124,6 +128,7 @@ export function CustomPanel(props: CustomPanelProps) {
         canonId={canonId}
         selectedBookId={reference.bookId}
         onClose={() => setPicker(null)}
+        returnFocusRef={bookRow}
         onSelect={(selected) =>
           setReference((current) => ({
             bookId: selected.id,
@@ -137,6 +142,7 @@ export function CustomPanel(props: CustomPanelProps) {
         bookId={reference.bookId}
         selectedChapter={reference.chapter}
         onClose={() => setPicker(null)}
+        returnFocusRef={chapterRow}
         onSelect={(chapter) =>
           setReference((current) => ({ ...current, chapter }))
         }

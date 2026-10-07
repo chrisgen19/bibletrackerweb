@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { FieldRow } from "@/components/field-row";
 import { Panel } from "@/components/panel";
@@ -50,6 +50,7 @@ export function VerseControl({
 }: VerseControlProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toVerse, setToVerse] = useState<number | null>(null);
+  const verseRow = useRef<HTMLButtonElement>(null);
 
   const selection = verseSelection(progress, toVerse);
   const chapterLabel = formatReference(reference, index);
@@ -67,6 +68,7 @@ export function VerseControl({
       <div className="mb-3">
         <Panel padded={false} className="overflow-hidden">
           <FieldRow
+            ref={verseRow}
             label="Read up to verse"
             value={copy.fieldValue}
             onClick={() => setPickerOpen(true)}
@@ -109,6 +111,7 @@ export function VerseControl({
         selectedTo={selection.endVerse}
         onSelect={setToVerse}
         onClose={() => setPickerOpen(false)}
+        returnFocusRef={verseRow}
       />
     </div>
   );

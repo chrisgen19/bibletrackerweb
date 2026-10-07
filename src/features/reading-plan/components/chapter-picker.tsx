@@ -1,5 +1,7 @@
 "use client";
 
+import type { RefObject } from "react";
+
 import { getCanonIndex } from "@/data/bible/canon-index";
 
 import { NumberGrid } from "./number-grid";
@@ -12,6 +14,8 @@ interface ChapterPickerProps {
   selectedChapter: number;
   onSelect: (chapter: number) => void;
   onClose: () => void;
+  /** The row that opened the picker, which gets the focus back when it closes. */
+  returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 /** Numeric grid sized to the selected book, so an invalid chapter cannot be chosen. */
@@ -22,6 +26,7 @@ export function ChapterPicker({
   selectedChapter,
   onSelect,
   onClose,
+  returnFocusRef,
 }: ChapterPickerProps) {
   const book = getCanonIndex(canonId).getBook(bookId);
   const chapters = Array.from(
@@ -36,6 +41,7 @@ export function ChapterPicker({
       title="Choose a chapter"
       description={book?.name ?? bookId}
       closeLabel="Close chapter picker"
+      returnFocusRef={returnFocusRef}
     >
       <NumberGrid
         numbers={chapters}

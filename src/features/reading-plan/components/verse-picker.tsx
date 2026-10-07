@@ -1,5 +1,7 @@
 "use client";
 
+import type { RefObject } from "react";
+
 import { NumberGrid } from "./number-grid";
 import { PickerDialog } from "./picker-dialog";
 
@@ -14,6 +16,8 @@ interface VersePickerProps {
   selectedTo: number;
   onSelect: (toVerse: number) => void;
   onClose: () => void;
+  /** The row that opened the picker, which gets the focus back when it closes. */
+  returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -32,6 +36,7 @@ export function VersePicker({
   selectedTo,
   onSelect,
   onClose,
+  returnFocusRef,
 }: VersePickerProps) {
   const verses = Array.from(
     { length: Math.max(0, verseCount - fromVerse + 1) },
@@ -49,6 +54,7 @@ export function VersePicker({
           : `${chapterLabel} · continuing from verse ${fromVerse}`
       }
       closeLabel="Close verse picker"
+      returnFocusRef={returnFocusRef}
     >
       <NumberGrid
         numbers={verses}
