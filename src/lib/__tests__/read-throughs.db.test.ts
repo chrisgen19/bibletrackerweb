@@ -9,10 +9,12 @@ import {
   startPlanFor,
 } from "@/features/reading-plan/commands/commands";
 import type { ReadingResult } from "@/features/reading-plan/commands/results";
+import { isCurrentReadThroughFinished } from "@/features/reading-plan/domain/read-through";
 import {
   createReadingPlan,
   getActiveReadingPlan,
   getAllReadingPlans,
+  type ReadingSnapshot,
   startNextReadThrough,
 } from "@/lib/dal";
 import { createTestUser, makeDraft, replacePlan } from "@/test/factories";
@@ -26,6 +28,17 @@ let user: string;
 beforeEach(async () => {
   user = await createTestUser();
 });
+
+/** The command's finish check, asked of the stored readings. */
+const isFinished = (stored: ReadingSnapshot) =>
+  isCurrentReadThroughFinished(
+    stored.plans,
+    stored.activePlan,
+    stored.completions,
+  );
+
+/** Skips the finish check, for tests about the segments themselves. */
+const unchecked = () => true;
 
 function snapshotOf(result: ReadingResult) {
   if (!result.ok) throw new Error(`Expected success, got ${result.error}`);
@@ -60,7 +73,11 @@ describe("read-throughs in the DAL", () => {
 
   it("keeps the read-through when the position changes", async () => {
     const plan = await createReadingPlan(user, makeDraft());
-    await startNextReadThrough(user, makeDraft({ startDate: "2026-08-01" }), 1);
+    await startNextReadThrough(
+      user,
+      makeDraft({ startDate: "2026-08-01" }),
+      unchecked,
+    );
 
     const moved = await replacePlan(
       user,
@@ -77,7 +94,7 @@ describe("read-throughs in the DAL", () => {
     const next = await startNextReadThrough(
       user,
       makeDraft({ startDate: "2026-08-01" }),
-      1,
+      unchecked,
     );
 
     expect(next).toEqual(
@@ -91,20 +108,35 @@ describe("read-throughs in the DAL", () => {
   });
 
   it("starts one read-through when two devices finish at once", async () => {
-    await createReadingPlan(user, makeDraft());
+    await finishTheBible();
     const draft = makeDraft({ startDate: "2026-08-01" });
 
     const [a, b] = await Promise.all([
-      startNextReadThrough(user, draft, 1),
-      startNextReadThrough(user, draft, 1),
+      startNextReadThrough(user, draft, isFinished),
+      startNextReadThrough(user, draft, isFinished),
     ]);
 
     expect([a, b].filter((plan) => plan !== null)).toHaveLength(1);
     expect((await getActiveReadingPlan(user))?.readThrough).toBe(2);
   });
 
+  it("refuses when a position change un-finished the read-through first", async () => {
+    await finishTheBible();
+    // This device saw it finished; another then moved back to Genesis 1.
+    await replacePlan(user, makeDraft({ startDate: "2026-01-02" }));
+
+    expect(
+      await startNextReadThrough(
+        user,
+        makeDraft({ startDate: "2026-08-01" }),
+        isFinished,
+      ),
+    ).toBeNull();
+    expect((await getActiveReadingPlan(user))?.readThrough).toBe(1);
+  });
+
   it("refuses without an open plan", async () => {
-    expect(await startNextReadThrough(user, makeDraft(), 1)).toBeNull();
+    expect(await startNextReadThrough(user, makeDraft(), unchecked)).toBeNull();
   });
 });
 

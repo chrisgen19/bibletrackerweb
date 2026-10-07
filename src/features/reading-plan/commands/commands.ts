@@ -3,7 +3,6 @@ import "server-only";
 import { getCanonIndex } from "@/data/bible/canon-index";
 import {
   buildNextReadThroughDraft,
-  getReadThrough,
   isCurrentReadThroughFinished,
 } from "@/features/reading-plan/domain/read-through";
 import { resolvePlanForDate } from "@/features/reading-plan/domain/schedule";
@@ -209,11 +208,14 @@ export async function startNextReadThroughFor(
     activePlan,
     getTodayDateKeyInZone(input.data.timeZone),
   );
-  // Null when another device moved on first: refuse, and the screen catches up.
-  const started = await startNextReadThrough(
-    userId,
-    draft,
-    getReadThrough(activePlan),
+  // Asked again under the lock: another device may have started it, moved the position
+  // or undone a reading since. Null then: refuse, and the screen catches up.
+  const started = await startNextReadThrough(userId, draft, (stored) =>
+    isCurrentReadThroughFinished(
+      stored.plans,
+      stored.activePlan,
+      stored.completions,
+    ),
   );
   if (started === null) return fail("not-finished");
   return withSnapshot(userId);

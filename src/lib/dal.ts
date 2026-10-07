@@ -224,16 +224,17 @@ export async function startNextReadThrough(
   userId: string,
   draft: ReadingPlanDraft,
   /**
-   * The read-through the caller saw finished. Checked under the lock, so two devices
-   * finishing at once start one new read-through, not two.
+   * Whether the read-through in progress is finished, asked of the stored readings under
+   * the lock rather than of what the caller saw. Two devices finishing at once start one
+   * new read-through, not two, and a position change or undo that landed first is seen.
    */
-  fromReadThrough: number,
+  isFinished: (stored: ReadingSnapshot) => boolean,
 ): Promise<ReadingPlan | null> {
   return replaceActiveSegment(
     userId,
     draft,
     (current) => current + 1,
-    fromReadThrough,
+    isFinished,
   );
 }
 
@@ -241,15 +242,15 @@ async function replaceActiveSegment(
   userId: string,
   draft: ReadingPlanDraft,
   nextReadThrough: (current: number) => number,
-  expectedReadThrough?: number,
+  canReplace?: (stored: ReadingSnapshot) => boolean,
 ): Promise<ReadingPlan | null> {
   return db.$transaction(async (tx) => {
     await lockReader(tx, userId);
     const active = await findActivePlan(tx, userId);
     if (active === null) return null;
     if (
-      expectedReadThrough !== undefined &&
-      active.readThrough !== expectedReadThrough
+      canReplace !== undefined &&
+      !canReplace(await readSnapshot(tx, userId))
     ) {
       return null;
     }
@@ -439,19 +440,23 @@ export interface ReadingSnapshot {
 export async function getReadingSnapshot(
   userId: string,
 ): Promise<ReadingSnapshot> {
-  return db.$transaction(
-    async (tx) => {
-      const plans = await findAllPlans(tx, userId);
-      const active = await findActivePlan(tx, userId);
-      const completions = await findAllCompletions(tx, userId);
-      return {
-        plans: plans.map(toPlan),
-        activePlan: active === null ? null : toPlan(active),
-        completions: completions.map(toCompletion),
-      };
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
-  );
+  return db.$transaction((tx) => readSnapshot(tx, userId), {
+    isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+  });
+}
+
+async function readSnapshot(
+  client: Executor,
+  userId: string,
+): Promise<ReadingSnapshot> {
+  const plans = await findAllPlans(client, userId);
+  const active = await findActivePlan(client, userId);
+  const completions = await findAllCompletions(client, userId);
+  return {
+    plans: plans.map(toPlan),
+    activePlan: active === null ? null : toPlan(active),
+    completions: completions.map(toCompletion),
+  };
 }
 
 // Settings (bibletrackerapp: settings-repository.ts)
