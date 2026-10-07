@@ -186,11 +186,10 @@ export function CustomPanel(props: CustomPanelProps) {
       <ExtraReadingDialog
         message={extraOffer?.message ?? null}
         movesPlan={extraOffer !== null && extraOffer.draft !== null}
-        onAccept={() => {
-          if (extraOffer === null) return;
-          if (extraOffer.draft !== null) props.onChangePlan(extraOffer.draft);
-          props.onSetExtra(extraOffer.id, false);
-        }}
+        onAccept={() =>
+          extraOffer !== null &&
+          props.onCountTowardPlan(extraOffer.id, extraOffer.draft)
+        }
         onClose={() => setExtraOffer(null)}
       />
     </div>

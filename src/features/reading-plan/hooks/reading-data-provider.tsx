@@ -42,7 +42,11 @@ import type { ReadingSnapshot } from "@/lib/dal";
 import { compareDateKeys, type DateKey } from "@/utils/date-key";
 import { createId } from "@/utils/id";
 
-import { READING_SNAPSHOT_KEY, readingWriteOptions } from "./reading-writes";
+import {
+  READING_SNAPSHOT_KEY,
+  readingWriteOptions,
+  runInOrder,
+} from "./reading-writes";
 import { useLocalToday } from "./use-local-today";
 
 /**
@@ -94,6 +98,11 @@ interface ReadingDataValue {
   undoReadingEntry: (id: string) => void;
   /** Moves one recorded reading into or out of the plan. */
   setReadingExtra: (id: string, isExtra: boolean) => void;
+  /**
+   * Brings an extra reading into the plan, first moving the plan on to `draft` when given.
+   * One write: the reading only joins once the plan has moved.
+   */
+  countTowardPlan: (id: string, draft: ReadingPlanDraft | null) => void;
   resetProgress: () => void;
   /** Plain copy for the last failed save, or null. */
   error: string | null;
@@ -261,6 +270,26 @@ export function ReadingDataProvider({
     [mutate],
   );
 
+  const countTowardPlan = useCallback(
+    (id: string, draft: ReadingPlanDraft | null) => {
+      if (draft === null) {
+        setReadingExtra(id, false);
+        return;
+      }
+      const created = { id: createId(), createdAt: Date.now() };
+      mutate({
+        optimistic: (s) =>
+          withReadingExtra(withChangedPlan(s, draft, created), id, false),
+        run: () =>
+          runInOrder(
+            () => actions.changePlan({ draft, timeZone }),
+            () => actions.setReadingExtra({ id, isExtra: false }),
+          ),
+      });
+    },
+    [mutate, setReadingExtra, timeZone],
+  );
+
   const resetProgress = useCallback(
     () => mutate({ optimistic: withReset, run: () => actions.resetProgress() }),
     [mutate],
@@ -297,6 +326,7 @@ export function ReadingDataProvider({
       undoReading,
       undoReadingEntry,
       setReadingExtra,
+      countTowardPlan,
       resetProgress,
       error: errorCode === null ? null : readingErrorMessage(errorCode),
       dismissError,
@@ -311,6 +341,7 @@ export function ReadingDataProvider({
     undoReading,
     undoReadingEntry,
     setReadingExtra,
+    countTowardPlan,
     resetProgress,
     errorCode,
     dismissError,

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { ReadingPlanDraft } from "@/features/reading-plan/domain/types";
 import type { ReadingSnapshot } from "@/lib/dal";
 import { createTestUser, makeDraft } from "@/test/factories";
+import { addDaysToDateKey } from "@/utils/date-key";
 import { createId } from "@/utils/id";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
 
@@ -237,6 +238,29 @@ describe("optimistic snapshots match the server", () => {
       // Undoing the day removes its plan reading and leaves the extra.
       { kind: "undo-day", date: "2026-01-01" },
       { kind: "undo-entry", nth: 1 },
+    ]);
+  });
+
+  // Review on #19 (Codex): "Move my plan" is one write that moves the plan on, then brings
+  // the extra into it; the screen applies both at once.
+  it("through Move my plan after an extra", async () => {
+    await runBoth([
+      { kind: "start", draft: makeDraft({ startDate: today }) },
+      {
+        kind: "complete",
+        date: today,
+        chapters: [{ bookId: "REV", chapter: 5 }],
+        isExtra: true,
+      },
+      {
+        kind: "change",
+        draft: makeDraft({
+          startDate: addDaysToDateKey(today, 1),
+          startBookId: "REV",
+          startChapter: 6,
+        }),
+      },
+      { kind: "set-extra", nth: 0, isExtra: false },
     ]);
   });
 

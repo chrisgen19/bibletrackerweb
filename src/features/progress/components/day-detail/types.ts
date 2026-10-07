@@ -33,6 +33,8 @@ export interface DayDetailProps {
   extraRows: readonly ReadingCompletion[];
   /** Moves one recorded reading into or out of the plan. */
   onSetExtra: (id: string, isExtra: boolean) => void;
+  /** Brings a just-logged extra into the plan, moving the plan on to `draft` first. */
+  onCountTowardPlan: (id: string, draft: ReadingPlanDraft | null) => void;
   /** Whether a chapter logged from the Custom tab belongs to the plan (reading-kind.ts). */
   classifyReading: (reference: BibleReference) => ReadingKind;
   /** Progress on the scheduled chapter across every day it was touched, or null. */

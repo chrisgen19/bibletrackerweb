@@ -14,6 +14,23 @@ export interface Command {
   readonly run: () => Promise<ReadingResult>;
 }
 
+/**
+ * One write made of several Server Actions, run in order. A step the server refuses (or
+ * one that fails to arrive) stops the rest and is the answer, so a later step never lands
+ * without the earlier one it depends on. Otherwise the last step's answer is.
+ */
+export async function runInOrder(
+  first: () => Promise<ReadingResult>,
+  ...rest: readonly (() => Promise<ReadingResult>)[]
+): Promise<ReadingResult> {
+  let result = await first();
+  for (const step of rest) {
+    if (!result.ok) return result;
+    result = await step();
+  }
+  return result;
+}
+
 /** Every reading write carries this key, so screens can wait for them to settle. */
 export const READING_WRITE_KEY = ["reading-write"] as const;
 

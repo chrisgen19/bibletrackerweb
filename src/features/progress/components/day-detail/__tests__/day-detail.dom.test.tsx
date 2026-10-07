@@ -63,6 +63,7 @@ function renderDetail(day: DayReading, handlers: Partial<DayDetailProps> = {}) {
       // so the ported cases run exactly as on iOS. extra-readings.dom.test.tsx covers them.
       extraRows={handlers.extraRows ?? []}
       onSetExtra={handlers.onSetExtra ?? vi.fn()}
+      onCountTowardPlan={handlers.onCountTowardPlan ?? vi.fn()}
       classifyReading={handlers.classifyReading ?? (() => "plan")}
       progress={handlers.progress ?? null}
       getProgressFor={handlers.getProgressFor ?? (() => null)}
