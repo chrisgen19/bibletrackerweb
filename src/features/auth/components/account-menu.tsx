@@ -39,15 +39,17 @@ export function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
+        {/* The icon size: the default size's side padding left the circle 22px wide. */}
         <Button
           variant="ghost"
+          size="icon"
           aria-label={`Account, ${account.email}`}
           className="size-11 rounded-full hover:bg-muted"
           data-testid="account-menu"
         >
           <span
             aria-hidden
-            className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-callout font-semibold text-primary"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-callout font-semibold text-primary"
           >
             {initialOf(account)}
           </span>
