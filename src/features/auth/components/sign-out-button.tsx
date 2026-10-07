@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type ComponentProps, useState } from "react";
+import type { ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
-import { authClient, catchNetworkFailure } from "@/lib/auth-client";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 
 type SignOutButtonProps = Pick<
   ComponentProps<typeof Button>,
@@ -16,25 +15,7 @@ export function SignOutButton({
   size = "sm",
   className,
 }: SignOutButtonProps) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  async function signOut() {
-    setPending(true);
-    setFailed(false);
-    const { error } = await catchNetworkFailure(() => authClient.signOut());
-    if (error === null) {
-      router.replace("/sign-in");
-      router.refresh();
-      return;
-    }
-    // Only the server can clear the session cookie. If the call failed (say, offline),
-    // the session is still valid and sign-in would bounce the reader straight back, so
-    // stay here and offer a retry instead of pretending it worked.
-    setPending(false);
-    setFailed(true);
-  }
+  const { signOut, pending, failed } = useSignOut();
 
   return (
     <>

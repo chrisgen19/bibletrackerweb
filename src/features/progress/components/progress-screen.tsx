@@ -1,10 +1,10 @@
 "use client";
 
-import { Book, Calendar, Flame, Settings } from "lucide-react";
+import { Book, Calendar, Flame } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { IconButton } from "@/components/icon-button";
+import { AccountMenu } from "@/features/auth/components/account-menu";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 
@@ -52,12 +52,7 @@ export function ProgressScreen() {
     <main className="mx-auto w-full max-w-5xl px-5 pt-6 pb-24">
       <div className="mb-3 flex items-center justify-between">
         <h1 className="text-large-title">Your Reading</h1>
-        <IconButton
-          icon={Settings}
-          label="Settings"
-          href="/settings"
-          variant="plain"
-        />
+        <AccountMenu />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
