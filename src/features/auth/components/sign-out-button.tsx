@@ -1,12 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
-export function SignOutButton() {
+type SignOutButtonProps = Pick<
+  ComponentProps<typeof Button>,
+  "variant" | "size" | "className"
+>;
+
+export function SignOutButton({
+  variant = "ghost",
+  size = "sm",
+  className,
+}: SignOutButtonProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -29,7 +38,13 @@ export function SignOutButton() {
 
   return (
     <>
-      <Button variant="ghost" size="sm" disabled={pending} onClick={signOut}>
+      <Button
+        variant={variant}
+        size={size}
+        className={className}
+        disabled={pending}
+        onClick={signOut}
+      >
         {pending ? "Signing out..." : failed ? "Retry sign out" : "Sign out"}
       </Button>
       <output aria-live="polite" className="sr-only">

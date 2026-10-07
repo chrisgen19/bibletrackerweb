@@ -1,0 +1,104 @@
+// From bibletrackerapp's calendar-grid.test.tsx.
+import { fireEvent, render, screen } from "@testing-library/react";
+
+import {
+  makeCompletions,
+  makePlan,
+} from "@/features/reading-plan/domain/__tests__/fixtures";
+import {
+  createScheduleContext,
+  getDayReading,
+} from "@/features/reading-plan/domain/schedule";
+import type { DayReading } from "@/features/reading-plan/domain/types";
+import type { DateKey } from "@/utils/date-key";
+
+import { buildCalendarMonth } from "../../domain/calendar-month";
+import { CalendarGrid } from "../calendar-grid";
+
+const TODAY: DateKey = "2026-08-24";
+const plan = makePlan({ startDate: "2026-08-01" });
+const month = buildCalendarMonth({ year: 2026, month: 8 });
+
+function buildReadings(
+  completedDates: readonly DateKey[],
+): Map<DateKey, DayReading> {
+  const rows = makeCompletions(completedDates);
+  const context = createScheduleContext([plan], rows, TODAY);
+  const readings = new Map<DateKey, DayReading>();
+  for (const week of month.weeks) {
+    for (const cell of week) {
+      readings.set(cell.date, getDayReading([plan], cell.date, context));
+    }
+  }
+  return readings;
+}
+
+function renderGrid(
+  completedDates: readonly DateKey[] = [],
+  onSelectDay = vi.fn(),
+) {
+  return render(
+    <CalendarGrid
+      month={month}
+      readings={buildReadings(completedDates)}
+      today={TODAY}
+      onSelectDay={onSelectDay}
+    />,
+  );
+}
+
+describe("CalendarGrid", () => {
+  it("renders every day of the month plus adjacent-month padding", () => {
+    renderGrid();
+
+    // August 2026 starts on a Saturday, so the grid needs six rows of seven cells.
+    expect(screen.getAllByRole("button")).toHaveLength(42);
+  });
+
+  it("describes each day for screen readers", () => {
+    renderGrid(["2026-08-10"]);
+
+    // The day announces what was *recorded*, and an unread past day names no chapter at
+    // all: the position never moved, so nothing was scheduled and lost.
+    expect(
+      screen.getByLabelText("Monday 10 August, Genesis 1, completed"),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Tuesday 11 August, not read")).toBeTruthy();
+  });
+
+  it("announces today as pending rather than missed", () => {
+    renderGrid();
+
+    // Nothing read yet, so today is still the head of the queue.
+    expect(
+      screen.getByLabelText("Today, Monday 24 August, Genesis 1, not read yet"),
+    ).toBeTruthy();
+  });
+
+  it("shows future days as scheduled, not missed", () => {
+    renderGrid();
+
+    expect(
+      screen.getByLabelText("Tuesday 25 August, Genesis 2, scheduled"),
+    ).toBeTruthy();
+  });
+
+  it("marks days before the plan began without penalising them", () => {
+    renderGrid();
+
+    // 26 July is a trailing cell from the previous month, before the plan started.
+    expect(
+      screen.getByLabelText("Sunday 26 July, before your plan began"),
+    ).toBeTruthy();
+  });
+
+  it("opens the day detail when a cell is tapped", () => {
+    const onSelectDay = vi.fn();
+    renderGrid([], onSelectDay);
+
+    fireEvent.click(
+      screen.getByLabelText("Today, Monday 24 August, Genesis 1, not read yet"),
+    );
+    expect(onSelectDay).toHaveBeenCalledWith(TODAY);
+  });
+});

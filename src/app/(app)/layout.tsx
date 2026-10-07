@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
 import { QueryProvider } from "@/components/query-provider";
-import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { WriteStatus } from "@/features/reading-plan/components/write-status";
 import { ReadingDataProvider } from "@/features/reading-plan/hooks/reading-data-provider";
-import { getReadingSnapshot } from "@/lib/dal";
+import { AppearanceSync } from "@/features/settings/components/appearance-sync";
+import { readAppearanceCookie } from "@/lib/appearance-cookie";
+import { getAppearancePreference, getReadingSnapshot } from "@/lib/dal";
 import { resolveReaderTimeZone } from "@/lib/reader-time-zone";
 import { requireUser } from "@/lib/session";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -16,12 +18,19 @@ import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
  */
 export default async function AppLayout({
   children,
-}: Readonly<{ children: ReactNode }>) {
+  sheet,
+}: Readonly<{ children: ReactNode; sheet: ReactNode }>) {
   const user = await requireUser();
-  const [snapshot, zone] = await Promise.all([
+  const [snapshot, zone, deviceAppearance] = await Promise.all([
     getReadingSnapshot(user.id),
     resolveReaderTimeZone(user.id),
+    readAppearanceCookie(),
   ]);
+  // A device without its own appearance yet starts from the account's, and keeps it: the
+  // cookie is set even for the default, or a later change on another device would reach
+  // this one (after a flash of the old appearance) instead of staying on that device.
+  const accountAppearance =
+    deviceAppearance === null ? await getAppearancePreference(user.id) : null;
 
   return (
     <QueryProvider>
@@ -31,18 +40,13 @@ export default async function AppLayout({
         initialTimeZone={zone.timeZone}
         initialTimeZoneFromDevice={zone.fromDevice}
       >
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
-            <span className="font-semibold">Bible Daily</span>
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="hidden truncate text-sm text-muted-foreground sm:inline">
-                {user.email}
-              </span>
-              <SignOutButton />
-            </div>
-          </header>
-          {children}
-        </div>
+        {children}
+        {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
+        {sheet}
+        <WriteStatus />
+        {accountAppearance === null ? null : (
+          <AppearanceSync preference={accountAppearance} />
+        )}
       </ReadingDataProvider>
     </QueryProvider>
   );

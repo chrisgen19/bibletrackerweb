@@ -29,9 +29,23 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
-          exclude: ["src/**/__tests__/**/*.db.test.ts"],
+          exclude: [
+            "src/**/__tests__/**/*.db.test.ts",
+            "src/**/__tests__/**/*.dom.test.tsx",
+          ],
           // Everything under test talks to <name>_test, never the dev database.
           setupFiles: ["./src/test/test-env.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // Components in a browser-like DOM: bibletrackerapp's interaction tests, ported
+          // from React Native Testing Library to React Testing Library.
+          name: "dom",
+          include: ["src/**/__tests__/**/*.dom.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["./src/test/test-env.ts", "./src/test/dom-setup.ts"],
         },
       },
       {

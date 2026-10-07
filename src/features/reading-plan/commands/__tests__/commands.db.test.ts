@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { getAllReadingPlans, getTimeZone } from "@/lib/dal";
+import { getAllReadingPlans, getReadingSnapshot, getTimeZone } from "@/lib/dal";
 import { db } from "@/lib/db";
+import {
+  transactionIdOf,
+  waitForReaderLockWaiter,
+  waitForTransactionWaiter,
+} from "@/test/db-locks";
 import { createTestUser, makeDraft } from "@/test/factories";
 import { createId } from "@/utils/id";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -25,19 +30,6 @@ let user: string;
 beforeEach(async () => {
   user = await createTestUser();
 });
-
-/**
- * Resolves once another session is blocked waiting for this reader's advisory lock. A
- * bigint key shows in pg_locks as its high and low 32 bits (classid, objid), objsubid 1.
- */
-async function lockWaitersFor(userId: string): Promise<number> {
-  const [row] = await db.$queryRaw<{ waiting: number }[]>`
-    SELECT count(*)::int AS waiting FROM pg_locks
-    WHERE locktype = 'advisory' AND NOT granted AND objsubid = 1
-      AND classid::bigint = (hashtextextended(${userId}, 0) >> 32) & 4294967295
-      AND objid::bigint = hashtextextended(${userId}, 0) & 4294967295`;
-  return row?.waiting ?? 0;
-}
 
 function snapshotOf(result: ReadingResult) {
   if (!result.ok) throw new Error(`Expected success, got ${result.error}`);
@@ -140,10 +132,7 @@ describe("changePlanFor", () => {
     });
     // Only commit once the change is blocked on the lock, so it really did start (and,
     // before the fix, run its unlocked check) while the reset was still open.
-    await vi.waitFor(async () => expect(await lockWaitersFor(user)).toBe(1), {
-      timeout: 5_000,
-      interval: 20,
-    });
+    await waitForReaderLockWaiter(user);
     commitReset();
     await reset;
 
@@ -295,6 +284,42 @@ describe("completeReadingFor", () => {
         timeZone: TZ,
       }),
     ).toEqual({ ok: false, error: "no-plan" });
+  });
+
+  // Another device resets progress while this one stores a reading. The plan was looked
+  // up before the reset committed, so the insert's foreign-key check waits on the reset
+  // and then finds the plan gone. That must read as no-plan, not a failed connection.
+  it("refuses a reading as no-plan when a reset commits while it is stored", async () => {
+    let commitReset = () => {};
+    const committed = new Promise<void>((resolve) => {
+      commitReset = resolve;
+    });
+    let markResetReady: (xid: string) => void = () => {};
+    const resetReady = new Promise<string>((resolve) => {
+      markResetReady = resolve;
+    });
+    const reset = db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${user}, 0))`;
+        await tx.readingCompletion.deleteMany({ where: { userId: user } });
+        await tx.readingPlan.deleteMany({ where: { userId: user } });
+        markResetReady(await transactionIdOf(tx));
+        await committed;
+      },
+      { timeout: 15_000 },
+    );
+
+    const resetXid = await resetReady;
+    const reading = complete({
+      date: today(),
+      chapters: [{ bookId: "GEN", chapter: 1 }],
+    });
+    await waitForTransactionWaiter(resetXid);
+    commitReset();
+    await reset;
+
+    expect(await reading).toEqual({ ok: false, error: "no-plan" });
+    expect((await getReadingSnapshot(user)).completions).toEqual([]);
   });
 });
 

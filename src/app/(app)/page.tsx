@@ -1,16 +1,15 @@
-import { TodayPanel } from "@/features/progress/components/today-panel";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { ProgressScreen } from "@/features/progress/components/progress-screen";
+import { getActiveReadingPlan } from "@/lib/dal";
 import { requireUser } from "@/lib/session";
 
-/** Temporary home until the progress screen lands in Phase 5 (see issue #1). */
-export default async function HomePage() {
-  const user = await requireUser();
+export const metadata: Metadata = { title: "Your Reading" };
 
-  return (
-    <main className="flex flex-1 flex-col items-center gap-6 px-4 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Welcome, {user.name}
-      </h1>
-      <TodayPanel />
-    </main>
-  );
+export default async function ProgressPage() {
+  const user = await requireUser();
+  // The presence of a plan is the onboarding marker, as on iOS.
+  if ((await getActiveReadingPlan(user.id)) === null) redirect("/onboarding");
+  return <ProgressScreen />;
 }

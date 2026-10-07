@@ -14,7 +14,8 @@ export interface Command {
   readonly run: () => Promise<ReadingResult>;
 }
 
-const READING_WRITE_KEY = ["reading-write"] as const;
+/** Every reading write carries this key, so screens can wait for them to settle. */
+export const READING_WRITE_KEY = ["reading-write"] as const;
 
 /** The writes still waiting for an answer, oldest first, apart from `except`. */
 function waitingWrites(queryClient: QueryClient, except: Command): Command[] {

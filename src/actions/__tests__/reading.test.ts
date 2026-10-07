@@ -119,4 +119,21 @@ describe("signed in", () => {
     await syncTimeZone({ timeZone: "Mars/Base" });
     expect(setCookie).not.toHaveBeenCalled();
   });
+
+  it("setAppearance sets this device's cookie only when the choice was stored", async () => {
+    await setAppearance({ appearance: "dark" });
+    expect(setCookie).toHaveBeenCalledWith(
+      "appearance",
+      "dark",
+      expect.objectContaining({ path: "/", sameSite: "lax" }),
+    );
+
+    setCookie.mockClear();
+    commands.setAppearanceFor.mockResolvedValue({
+      ok: false,
+      error: "invalid-input",
+    });
+    await setAppearance({ appearance: "dark" });
+    expect(setCookie).not.toHaveBeenCalled();
+  });
 });

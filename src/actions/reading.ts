@@ -16,6 +16,7 @@ import type {
   ReadingResult,
   SettingResult,
 } from "@/features/reading-plan/commands/results";
+import { APPEARANCE_COOKIE, APPEARANCE_COOKIE_MAX_AGE } from "@/lib/appearance";
 import {
   TIME_ZONE_COOKIE,
   TIME_ZONE_COOKIE_MAX_AGE,
@@ -80,9 +81,18 @@ export async function syncTimeZone(
   return result;
 }
 
+/** Stores the appearance and sets this device's cookie, so it renders without a flash. */
 export async function setAppearance(
   input: SetAppearanceInput,
 ): Promise<SettingResult> {
   const user = await requireUser();
-  return commands.setAppearanceFor(user.id, input);
+  const result = await commands.setAppearanceFor(user.id, input);
+  if (result.ok) {
+    (await cookies()).set(APPEARANCE_COOKIE, input.appearance, {
+      path: "/",
+      maxAge: APPEARANCE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+    });
+  }
+  return result;
 }
