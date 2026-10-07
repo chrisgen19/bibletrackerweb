@@ -29,6 +29,7 @@ import {
 export function PasswordRow({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const [changed, setChanged] = useState(false);
+  const row = useRef<HTMLButtonElement>(null);
 
   function onOpenChange(next: boolean) {
     setOpen(next);
@@ -39,6 +40,7 @@ export function PasswordRow({ email }: { email: string }) {
   return (
     <>
       <FieldRow
+        ref={row}
         label="Password"
         value="Change"
         onClick={() => onOpenChange(true)}
@@ -47,6 +49,7 @@ export function PasswordRow({ email }: { email: string }) {
       <AccountDialog
         open={open}
         onOpenChange={onOpenChange}
+        returnFocusRef={row}
         title={changed ? "Password changed" : "Change password"}
         description={
           changed

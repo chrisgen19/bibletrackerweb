@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { FieldRow } from "@/components/field-row";
@@ -20,15 +20,22 @@ import {
 /** The reader's name, as the account menu shows it, with an editor behind it. */
 export function NameRow({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
+  const row = useRef<HTMLButtonElement>(null);
   return (
     <>
       <FieldRow
+        ref={row}
         label="Name"
         value={name.trim() === "" ? "Not set" : name}
         onClick={() => setOpen(true)}
         testId="name-row"
       />
-      <AccountDialog open={open} onOpenChange={setOpen} title="Edit name">
+      <AccountDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Edit name"
+        returnFocusRef={row}
+      >
         <NameForm name={name} onSaved={() => setOpen(false)} />
       </AccountDialog>
     </>

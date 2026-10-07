@@ -226,6 +226,25 @@ describe("SettingsScreen", () => {
     });
   });
 
+  // Review on #16 (Codex): Radix returns focus to a DialogTrigger, and these rows open
+  // their dialogs themselves, so closing one dropped keyboard focus on the page body.
+  it.each([
+    "Name, Ruth Moabite",
+    "Password, Change",
+  ])("gives focus back to %s when its dialog closes", async (name) => {
+    renderSettings();
+    const user = userEvent.setup();
+    const row = screen.getByRole("button", { name });
+
+    row.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(row);
+  });
+
   // Production feedback after #13: Google sign-in for an existing password account
   // stopped at "sign in with your password instead", with no way to add Google.
   describe("Google", () => {

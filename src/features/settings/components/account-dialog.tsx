@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,8 @@ interface AccountDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  /** The row that opened the dialog, which gets the focus back when it closes. */
+  returnFocusRef: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -29,6 +31,7 @@ export function AccountDialog({
   onOpenChange,
   title,
   description,
+  returnFocusRef,
   children,
 }: AccountDialogProps) {
   return (
@@ -40,6 +43,12 @@ export function AccountDialog({
         {...(description === undefined
           ? { "aria-describedby": undefined }
           : {})}
+        // Radix only returns focus to a DialogTrigger, and the row opens this itself, so
+        // without this, closing left keyboard focus on the page body.
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
+        }}
       >
         <DialogHeader>
           <DialogTitle className="text-title">{title}</DialogTitle>

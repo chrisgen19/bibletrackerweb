@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import type { Ref } from "react";
 
 interface FieldRowProps {
   label: string;
@@ -7,6 +8,8 @@ interface FieldRowProps {
   /** Navigates instead of acting. */
   href?: string;
   onClick?: () => void;
+  /** The button, for a dialog it opens to give focus back to. Ignored with `href`. */
+  ref?: Ref<HTMLButtonElement>;
   /** Hides the separator on the last row of a group. */
   last?: boolean;
   /** Marks a row whose picker is open, for assistive technology. */
@@ -20,6 +23,7 @@ export function FieldRow({
   value,
   href,
   onClick,
+  ref,
   last = false,
   expanded,
   testId,
@@ -59,6 +63,7 @@ export function FieldRow({
   }
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-label={name}
