@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { googleLinkErrorMessage } from "@/features/auth/auth-error-message";
 import { firstParam } from "@/features/auth/safe-next-path";
 import { SettingsScreen } from "@/features/settings/components/settings-screen";
 import { readAppearanceCookie } from "@/lib/appearance-cookie";
@@ -17,13 +18,14 @@ export default async function SettingsPage({
   // This device's choice, else the account's: what the page is rendering right now.
   const appearance =
     (await readAppearanceCookie()) ?? (await getAppearancePreference(user.id));
-  // A failed "Connect Google" comes back as ?google=failed&error=<code>.
+  // A failed "Connect Google" comes back as ?google=failed&error=<code>. The code is only
+  // ever a key for fixed copy, turned into words here, as the sign-in page does.
   const google = googleSignInEnabled
     ? {
         linked: await hasGoogleAccount(),
         error:
           firstParam(params.google) === "failed"
-            ? (firstParam(params.error) ?? "unknown")
+            ? googleLinkErrorMessage(firstParam(params.error) ?? "")
             : null,
       }
     : null;
