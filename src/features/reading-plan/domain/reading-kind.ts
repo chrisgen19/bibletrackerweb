@@ -6,7 +6,7 @@ import { isSameReference } from "./reference";
 import type { ReadingCompletion, ReadingPlan } from "./types";
 
 /**
- * Extra readings: a web-first addition (bibletrackerweb#18), not yet in bibletrackerapp.
+ * Extra readings (spec: bibletrackerweb#18).
  *
  * A plan reading moves the plan. An extra reading (a devotional passage, a jump far from
  * where the plan is) is recorded on its day and counts toward the streak, but never
@@ -18,7 +18,7 @@ export type ReadingKind = "plan" | "extra";
 /** How far ahead of the position a Custom reading still counts as the plan: a week. */
 export const PLAN_WINDOW_DAYS = 7;
 
-/** Rows that count toward the plan. Rows without the flag (every iOS row) do. */
+/** Rows that count toward the plan. Rows written before extra readings (no flag) do. */
 export function selectPlanReadings(
   completions: readonly ReadingCompletion[],
 ): ReadingCompletion[] {

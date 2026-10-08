@@ -1,4 +1,4 @@
-// Web-only (bibletrackerweb#18): extra readings are not in bibletrackerapp yet.
+// Extra readings (spec: bibletrackerweb#18).
 import { PROTESTANT_CANON_INDEX } from "@/data/bible/canon-index";
 
 import {

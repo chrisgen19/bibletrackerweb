@@ -1,4 +1,4 @@
-// Web-only (bibletrackerweb#18): read-throughs are not in bibletrackerapp yet.
+// Read-throughs (spec: bibletrackerweb#18).
 import { getChapterProgress } from "../chapter-progress";
 import {
   buildNextReadThroughDraft,
@@ -19,7 +19,7 @@ import {
 } from "./read-through-fixtures";
 
 describe("getReadThrough / getCurrentReadThrough", () => {
-  it("treats a plan without one (every iOS plan) as the first", () => {
+  it("treats a plan without one (written before read-throughs) as the first", () => {
     expect(getReadThrough(makePlan())).toBe(1);
   });
 
@@ -192,6 +192,28 @@ describe("getRecordedReadThrough", () => {
     expect(measuredIn(recorded ?? getReadThrough(restart))).toBe(true);
     // Measured in the read-through governing the day, it read as unread.
     expect(measuredIn(getReadThrough(restart))).toBe(false);
+  });
+
+  // Review on #22 (Codex): an extra never decides where a chapter is measured.
+  it("skips an extra reading of the chapter", () => {
+    const extra = makeCompletion(FIRST_FINISHED, {
+      id: "extra",
+      readingPlanId: first.id,
+      bookId: "REV",
+      chapter: 22,
+      isExtra: true,
+    });
+    const planReading = makeCompletion(FIRST_FINISHED, {
+      id: "plan",
+      readingPlanId: restart.id,
+      bookId: "REV",
+      chapter: 22,
+    });
+
+    expect(getRecordedReadThrough(plans, [extra], REVELATION_22)).toBeNull();
+    expect(
+      getRecordedReadThrough(plans, [extra, planReading], REVELATION_22),
+    ).toBe(2);
   });
 
   it("is null for a chapter the day holds no reading of", () => {
