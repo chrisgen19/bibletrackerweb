@@ -126,8 +126,32 @@ export function buildNextReadThroughDraft(
   };
 }
 
-/** Each read-through's latest segment: the one it would carry on from. */
+/**
+ * Each read-through's latest segment: the one it would carry on from.
+ *
+ * A segment replaced before the day it would have begun (a continuation set for
+ * tomorrow, then a position change today) ends before it starts and governs no day, so
+ * it is passed over, though its start date is the latest. A read-through made only of
+ * such segments still has one.
+ */
 function latestSegments(
+  plans: readonly ReadingPlan[],
+): Map<number, ReadingPlan> {
+  const latest = latestByStart(plans.filter(governsAnyDay));
+  for (const [readThrough, plan] of latestByStart(plans)) {
+    if (!latest.has(readThrough)) latest.set(readThrough, plan);
+  }
+  return latest;
+}
+
+/** False for a segment closed before it began, which governs no date. */
+function governsAnyDay(plan: ReadingPlan): boolean {
+  return (
+    plan.endDate === null || compareDateKeys(plan.endDate, plan.startDate) >= 0
+  );
+}
+
+function latestByStart(
   plans: readonly ReadingPlan[],
 ): Map<number, ReadingPlan> {
   const latest = new Map<number, ReadingPlan>();

@@ -156,3 +156,61 @@ describe("getRecordedReadThrough", () => {
     ).toBeNull();
   });
 });
+
+// Review on #20 (Codex): "Move my plan" starts its segment tomorrow; moving the position in
+// Settings the same day closes that segment before it begins. Its start date is still the
+// latest, and the finish check measured the read-through from it.
+describe("a segment replaced before it began", () => {
+  const TODAY = "2026-08-10";
+  const started = makePlan({
+    id: "started",
+    startDate: "2026-08-01",
+    isActive: false,
+    endDate: TODAY,
+  });
+  /** The continuation from "Move my plan", closed the same day by Settings. */
+  const continuation = (startChapter: number) =>
+    makePlan({
+      id: "continuation",
+      startDate: "2026-08-11",
+      startBookId: "REV",
+      startChapter,
+      isActive: false,
+      endDate: "2026-08-09",
+      createdAt: 1,
+    });
+  /** The position Settings moved to, today. */
+  const moved = (startBookId: string, startChapter: number) =>
+    makePlan({
+      id: "moved",
+      startDate: TODAY,
+      startBookId,
+      startChapter,
+      createdAt: 2,
+    });
+  const read = (bookId: string, chapter: number) =>
+    makeCompletion(TODAY, { id: `${bookId}-${chapter}`, bookId, chapter });
+
+  it("does not hold back a read-through finished from the active segment", () => {
+    const active = moved("REV", 22);
+    const plans = [started, continuation(21), active];
+
+    expect(isCurrentReadThroughFinished(plans, active, [read("REV", 22)])).toBe(
+      true,
+    );
+  });
+
+  it("does not finish a read-through the active segment has not", () => {
+    const active = moved("GEN", 1);
+    const plans = [started, continuation(22), active];
+    const rows = [read("REV", 21), read("REV", 22)];
+
+    expect(isCurrentReadThroughFinished(plans, active, rows)).toBe(false);
+  });
+
+  it("still measures a read-through made only of such segments", () => {
+    expect(
+      getReadThroughFinishDates([continuation(22)], [read("REV", 22)]).has(1),
+    ).toBe(true);
+  });
+});
