@@ -102,6 +102,13 @@ export function useDayDetail(
 
   if (day === null) return null;
   const index = getCanonIndex(canonId);
+  // A day from an earlier read-through stores its readings there, so a Custom reading on
+  // it is classified there too. That read-through was finished when the next one began,
+  // so it has no queue: a new chapter on such a day is an extra.
+  const earlier =
+    day.plan !== null && getReadThrough(day.plan) !== data.currentReadThrough
+      ? day.plan
+      : null;
 
   return {
     day,
@@ -119,13 +126,27 @@ export function useDayDetail(
     onSetExtra: data.setReadingExtra,
     onCountTowardPlan: data.countTowardPlan,
     classifyReading: (reference: BibleReference) =>
-      classifyCustomReading({
-        reference,
-        planReadings: progressReadings,
-        unread: scheduleContext.unread,
-        plan: data.activePlan,
-        index,
-      }),
+      classifyCustomReading(
+        earlier === null
+          ? {
+              reference,
+              planReadings: progressReadings,
+              unread: scheduleContext.unread,
+              plan: data.activePlan,
+              index,
+            }
+          : {
+              reference,
+              planReadings: selectProgressCompletions(
+                plans,
+                data.completions,
+                getReadThrough(earlier),
+              ),
+              unread: [],
+              plan: earlier,
+              index,
+            },
+      ),
     progress,
     getProgressFor: (reference: BibleReference) =>
       getChapterProgress(completionsFor(reference), reference, index),
