@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { BibleReference } from "@/data/bible/canon";
 import { getCanonIndex } from "@/data/bible/canon-index";
 import { getChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
+import { classifyCustomReading } from "@/features/reading-plan/domain/reading-kind";
 import { getChapterCompletionDate } from "@/features/reading-plan/domain/reading-position";
 import { getDayReading } from "@/features/reading-plan/domain/schedule";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
@@ -13,6 +14,9 @@ import type { DayDetailProps } from "../components/day-detail/types";
 /**
  * Everything the day detail shows for `date`, from the reading data (bibletrackerapp's
  * app/day/[date].tsx). Null when the date is not a real day.
+ *
+ * The sheet works from the plan's view, so a day holding only an extra reading still
+ * offers its plan reading; the extras are listed on their own (`extraRows`).
  */
 export function useDayDetail(
   date: string,
@@ -20,7 +24,14 @@ export function useDayDetail(
   chapter: string | undefined,
 ): DayDetailProps | null {
   const data = useReadingData();
-  const { plans, completions, completionLookup, scheduleContext, today } = data;
+  const {
+    plans,
+    planReadings: completions,
+    planCompletionLookup,
+    completionLookup,
+    planScheduleContext: scheduleContext,
+    today,
+  } = data;
   const isValid = isValidDateKey(date);
 
   const day = useMemo(
@@ -62,13 +73,26 @@ export function useDayDetail(
   return {
     day,
     today,
-    onComplete: (chapters, verses) =>
-      data.completeReading(day.date, chapters, verses),
+    onComplete: (chapters, verses, options) =>
+      data.completeReading(day.date, chapters, verses, options),
     onUndo: () => data.undoReading(day.date),
     onUndoEntry: data.undoReadingEntry,
     onChangePlan: data.changePlan,
-    completions: completionLookup,
-    rows: completionLookup.get(day.date) ?? [],
+    completions: planCompletionLookup,
+    rows: planCompletionLookup.get(day.date) ?? [],
+    extraRows: (completionLookup.get(day.date) ?? []).filter(
+      (row) => row.isExtra === true,
+    ),
+    onSetExtra: data.setReadingExtra,
+    onCountTowardPlan: data.countTowardPlan,
+    classifyReading: (reference: BibleReference) =>
+      classifyCustomReading({
+        reference,
+        planReadings: completions,
+        unread: scheduleContext.unread,
+        plan: data.activePlan,
+        index,
+      }),
     progress,
     getProgressFor: (reference: BibleReference) =>
       getChapterProgress(completions, reference, index),

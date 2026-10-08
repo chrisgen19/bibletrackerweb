@@ -11,18 +11,21 @@ import { ChapterPicker } from "@/features/reading-plan/components/chapter-picker
 import { formatReference } from "@/features/reading-plan/domain/reference";
 import type { ReadingPlanDraft } from "@/features/reading-plan/domain/types";
 import { formatVerseRanges } from "@/features/reading-plan/domain/verse-range";
+import { createId } from "@/utils/id";
 import { ContinueDialog } from "./continue-dialog";
 import {
   continuationAfterLog,
   continuationMessage,
+  extraReadingMessage,
   initialCustomReference,
 } from "./day-detail-logic";
+import { ExtraReadingDialog } from "./extra-reading-dialog";
 import type { DayDetailProps } from "./types";
 import { VerseControl } from "./verse-control";
 
 type CustomPanelProps = Omit<
   DayDetailProps,
-  "onUndo" | "onUndoEntry" | "rows" | "progress"
+  "onUndo" | "onUndoEntry" | "rows" | "extraRows" | "progress"
 >;
 
 /**
@@ -30,6 +33,10 @@ type CustomPanelProps = Omit<
  *
  * After logging, it offers to move the reading position so the next unread day continues
  * from there: the schedule and the log stay independent unless the reader links them.
+ *
+ * A chapter far from the plan (a re-read, or Revelation while the plan is in Leviticus)
+ * is recorded as an extra reading straight away, and the offer becomes whether to bring
+ * it into the plan instead (bibletrackerweb#18).
  */
 export function CustomPanel(props: CustomPanelProps) {
   const { day, onComplete, getProgressFor } = props;
@@ -45,6 +52,11 @@ export function CustomPanel(props: CustomPanelProps) {
     draft: ReadingPlanDraft;
     message: string;
   } | null>(null);
+  const [extraOffer, setExtraOffer] = useState<{
+    id: string;
+    draft: ReadingPlanDraft | null;
+    message: string;
+  } | null>(null);
 
   const book = index.getBook(reference.bookId);
   // Progress on whichever chapter is selected, so resuming an unfinished one starts at
@@ -52,10 +64,28 @@ export function CustomPanel(props: CustomPanelProps) {
   const progress = getProgressFor(reference);
 
   function handleLog(span?: VerseRange): boolean {
+    const isExtra = props.classifyReading(reference) === "extra";
+    // An extra picks its own row id, so accepting the offer can move that row into the
+    // plan. A plan reading is written exactly as before.
+    const id = createId();
+    const written = isExtra
+      ? onComplete([reference], span, { isExtra, ids: [id] })
+      : onComplete([reference], span);
     // A refused write must not produce a continuation offer.
-    if (!onComplete([reference], span)) return false;
+    if (!written) return false;
     const draft = continuationAfterLog({ ...props, reference, span, progress });
-    if (draft !== null) {
+    if (isExtra) {
+      setExtraOffer({
+        id,
+        draft,
+        message: extraReadingMessage(
+          reference,
+          props.currentPosition,
+          draft,
+          index,
+        ),
+      });
+    } else if (draft !== null) {
       setOffer({
         draft,
         message: continuationMessage(reference, draft, index),
@@ -152,6 +182,15 @@ export function CustomPanel(props: CustomPanelProps) {
         message={offer?.message ?? null}
         onAccept={() => offer !== null && props.onChangePlan(offer.draft)}
         onClose={() => setOffer(null)}
+      />
+      <ExtraReadingDialog
+        message={extraOffer?.message ?? null}
+        movesPlan={extraOffer !== null && extraOffer.draft !== null}
+        onAccept={() =>
+          extraOffer !== null &&
+          props.onCountTowardPlan(extraOffer.id, extraOffer.draft)
+        }
+        onClose={() => setExtraOffer(null)}
       />
     </div>
   );

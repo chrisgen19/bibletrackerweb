@@ -8,9 +8,11 @@ import {
   type SegmentOption,
 } from "@/components/segmented-control";
 import { SheetTitle } from "@/components/ui/sheet";
+import { DEFAULT_CANON_ID, getCanonIndex } from "@/data/bible/canon-index";
 import { compareDateKeys, fromDateKey } from "@/utils/date-key";
 
 import { CustomPanel } from "./custom-panel";
+import { ExtraReadingsBlock } from "./extra-readings-block";
 import { PlanPanel } from "./plan-panel";
 import type { DayDetailProps } from "./types";
 
@@ -68,6 +70,13 @@ export function DayDetail({
       ) : (
         <CustomPanel {...props} />
       )}
+
+      <ExtraReadingsBlock
+        rows={props.extraRows}
+        index={getCanonIndex(day.plan?.canonId ?? DEFAULT_CANON_ID)}
+        onSetExtra={props.onSetExtra}
+        onUndoEntry={props.onUndoEntry}
+      />
     </div>
   );
 }

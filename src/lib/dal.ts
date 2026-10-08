@@ -74,6 +74,7 @@ function toCompletion(row: ReadingCompletionRow): ReadingCompletion {
         ? null
         : { from: row.fromVerse, to: row.toVerse },
     completedAt: row.completedAt.getTime(),
+    isExtra: row.isExtra,
   };
 }
 
@@ -263,15 +264,22 @@ export interface MarkCompleteInput {
    * removes the right row. Omit to let the database generate them.
    */
   readonly ids?: readonly string[];
+  /** Record the chapters as extra readings, outside the plan's progress. */
+  readonly isExtra?: boolean;
 }
 
 /**
  * Records a day's reading.
  *
- * One statement with ON CONFLICT DO NOTHING: a multi-chapter day is all-or-nothing, and
- * re-marking a day that is already complete is a no-op rather than a duplicate-key
- * failure. The plan must belong to this reader; the composite foreign key rejects a
- * plan id from anyone else.
+ * The insert is one statement with ON CONFLICT DO NOTHING: a multi-chapter day is
+ * all-or-nothing, and re-marking a day that is already complete is a no-op rather than a
+ * duplicate-key failure. The plan must belong to this reader; the composite foreign key
+ * rejects a plan id from anyone else.
+ *
+ * The unique key ignores `is_extra`, so a plan reading of a chapter already logged as an
+ * extra on that day and span (one moved out with "Mark as extra", say) would be skipped
+ * and leave the plan untouched. That row is brought into the plan instead. An extra
+ * reading never demotes a plan row.
  */
 export async function markReadingComplete(
   userId: string,
@@ -279,36 +287,68 @@ export async function markReadingComplete(
 ): Promise<void> {
   const completedAt = new Date(input.completedAt ?? Date.now());
   const localDate = toDbDate(input.localDate);
+  const isExtra = input.isExtra ?? false;
 
   // A span only makes sense for a single chapter; ignore it otherwise rather than
   // silently applying the same verses to several chapters.
   const span = input.chapters.length === 1 ? input.verses : undefined;
+  const spans = input.chapters.map((chapter) => ({
+    bookId: chapter.bookId,
+    chapter: chapter.chapter,
+    fromVerse: span?.from ?? 0,
+    toVerse: span?.to ?? 0,
+  }));
 
-  await db.readingCompletion.createMany({
-    data: input.chapters.map((chapter, position) => ({
-      ...(input.ids?.[position] === undefined
-        ? {}
-        : { id: input.ids[position] }),
-      userId,
-      readingPlanId: input.readingPlanId,
-      localDate,
-      bookId: chapter.bookId,
-      chapter: chapter.chapter,
-      fromVerse: span?.from ?? 0,
-      toVerse: span?.to ?? 0,
-      completedAt,
-    })),
-    skipDuplicates: true,
+  await db.$transaction(async (tx) => {
+    await tx.readingCompletion.createMany({
+      data: spans.map((row, position) => ({
+        ...(input.ids?.[position] === undefined
+          ? {}
+          : { id: input.ids[position] }),
+        ...row,
+        userId,
+        readingPlanId: input.readingPlanId,
+        localDate,
+        completedAt,
+        isExtra,
+      })),
+      skipDuplicates: true,
+    });
+    if (isExtra) return;
+    await tx.readingCompletion.updateMany({
+      where: { userId, localDate, isExtra: true, OR: spans },
+      data: { isExtra: false },
+    });
   });
 }
 
-/** Undo: removes every chapter this reader recorded on that local day. */
+/**
+ * Moves one recorded reading into or out of the plan. Scoped to the reader, and, like
+ * removal, an id that is not a UUID matches nothing instead of failing the query.
+ */
+export async function setReadingExtra(
+  userId: string,
+  id: string,
+  isExtra: boolean,
+): Promise<void> {
+  if (!UUID_PATTERN.test(id)) return;
+  await db.readingCompletion.updateMany({
+    where: { id, userId },
+    data: { isExtra },
+  });
+}
+
+/**
+ * Undo: removes every plan reading this reader recorded on that local day. Extra
+ * readings are listed and removed on their own, so undoing the day's plan reading never
+ * takes one with it.
+ */
 export async function removeReadingCompletion(
   userId: string,
   localDate: DateKey,
 ): Promise<void> {
   await db.readingCompletion.deleteMany({
-    where: { userId, localDate: toDbDate(localDate) },
+    where: { userId, localDate: toDbDate(localDate), isExtra: false },
   });
 }
 

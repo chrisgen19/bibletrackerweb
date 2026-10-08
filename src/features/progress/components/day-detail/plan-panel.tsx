@@ -63,6 +63,7 @@ export function PlanPanel(props: PlanPanelProps) {
           isComplete={areRowsComplete(rows, getProgressFor)}
           onUndo={props.onUndo}
           onUndoEntry={props.onUndoEntry}
+          onSetExtra={props.onSetExtra}
         />
       ) : null}
 

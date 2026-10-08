@@ -48,6 +48,8 @@ export const completeReadingInput = z
       .optional(),
     /** Client-generated row ids, one per chapter. See `MarkCompleteInput.ids`. */
     ids: z.array(z.uuid()).optional(),
+    /** An extra reading, outside the plan. The Custom tab decides (reading-kind.ts). */
+    isExtra: z.boolean().optional(),
     timeZone,
   })
   .refine(
@@ -63,6 +65,12 @@ export const undoReadingEntryInput = z.object({
   id: z.string().min(1).max(64),
 });
 
+// Not checked as a UUID, like removal: an id that is not one matches nothing.
+export const setReadingExtraInput = z.object({
+  id: z.string().min(1).max(64),
+  isExtra: z.boolean(),
+});
+
 export const syncTimeZoneInput = z.object({ timeZone });
 
 export const setAppearanceInput = z.object({ appearance: appearanceSchema });
@@ -72,5 +80,6 @@ export type ChangePlanInput = z.input<typeof changePlanInput>;
 export type CompleteReadingInput = z.input<typeof completeReadingInput>;
 export type UndoReadingInput = z.input<typeof undoReadingInput>;
 export type UndoReadingEntryInput = z.input<typeof undoReadingEntryInput>;
+export type SetReadingExtraInput = z.input<typeof setReadingExtraInput>;
 export type SyncTimeZoneInput = z.input<typeof syncTimeZoneInput>;
 export type SetAppearanceInput = z.input<typeof setAppearanceInput>;

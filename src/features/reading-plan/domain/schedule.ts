@@ -82,29 +82,46 @@ export function createScheduleContext(
   today: DateKey = getTodayDateKey(),
   /** Injectable for tests; otherwise taken from the plan that governs today. */
   injectedIndex?: CanonIndex,
+  /**
+   * The rows that move the plan: the queue, what is finished and whether today's slot is
+   * used. Defaults to every row. The web passes the plan readings only, so an extra
+   * reading shows on its day (`byDate`) without stepping the queue past its chapter.
+   */
+  progressCompletions: readonly ReadingCompletion[] = completions,
 ): ScheduleContext {
   const byDate = createCompletionLookup(completions);
+  const progressByDate =
+    progressCompletions === completions
+      ? byDate
+      : createCompletionLookup(progressCompletions);
   // Resolve the plan first: the canon belongs to the plan in force now, not to
   // whichever segment happens to be oldest.
   const active =
     resolvePlanForDate(plans, today) ?? plans[plans.length - 1] ?? null;
   const index = injectedIndex ?? getCanonIndex(active?.canonId ?? "protestant");
 
-  const completed = getCompletedChapterKeys(completions, index);
+  const completed = getCompletedChapterKeys(progressCompletions, index);
   const finished =
-    active !== null && isCanonFullyRead(active, completed, index, completions);
+    active !== null &&
+    isCanonFullyRead(active, completed, index, progressCompletions);
 
   return {
     byDate,
     unread:
       active === null
         ? []
-        : getUnreadSequence(active, completed, index, undefined, completions),
+        : getUnreadSequence(
+            active,
+            completed,
+            index,
+            undefined,
+            progressCompletions,
+          ),
     today,
-    todayRecorded: byDate.has(today),
+    todayRecorded: progressByDate.has(today),
     canonFinishedOn:
       finished && active !== null
-        ? getCanonFinishedOn(active, completions, index)
+        ? getCanonFinishedOn(active, progressCompletions, index)
         : null,
     completedKeys: completed,
     activePlan: active,
