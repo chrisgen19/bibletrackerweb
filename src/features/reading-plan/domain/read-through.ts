@@ -9,6 +9,7 @@ import {
   isCanonFullyRead,
 } from "./reading-position";
 import { isSameReference } from "./reference";
+import { createScheduleContext } from "./schedule";
 import type { ReadingCompletion, ReadingPlan, ReadingPlanDraft } from "./types";
 
 /**
@@ -92,6 +93,40 @@ export function getReadThroughFinishDates(
     if (!isCanonFullyRead(latest, read, canon, rows)) continue;
     const finishedOn = getCanonFinishedOn(latest, rows, canon);
     if (finishedOn !== null) finished.set(readThrough, finishedOn);
+  }
+  return finished;
+}
+
+/**
+ * The canon finish date of every plan segment, each measured against the plan readings
+ * of its own read-through. The provider puts this on the schedule context.
+ *
+ * `createScheduleContext` measures every segment against the rows it is given, which on
+ * the web are the current read-through's. An earlier read-through's segments would then
+ * look unfinished, and the days between finishing it and starting the next would turn
+ * into missed ones. Measuring per segment, not per read-through, also keeps a finished
+ * segment finished when a position change in the same read-through opens a new one.
+ */
+export function getSegmentFinishDates(
+  plans: readonly ReadingPlan[],
+  completions: readonly ReadingCompletion[],
+  today: DateKey,
+): Map<string, DateKey | null> {
+  const finished = new Map<string, DateKey | null>();
+  for (const readThrough of new Set(plans.map(getReadThrough))) {
+    const rows = selectProgressCompletions(plans, completions, readThrough);
+    // The context's own per-segment rule, so it is not written out twice.
+    const context = createScheduleContext(
+      plans,
+      completions,
+      today,
+      undefined,
+      rows,
+    );
+    for (const plan of plans) {
+      if (getReadThrough(plan) !== readThrough) continue;
+      finished.set(plan.id, context.canonFinishedOnByPlan.get(plan.id) ?? null);
+    }
   }
   return finished;
 }

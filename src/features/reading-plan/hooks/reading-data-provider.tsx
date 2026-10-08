@@ -31,6 +31,7 @@ import {
   buildNextReadThroughDraft,
   getCurrentReadThrough,
   getReadThroughFinishDates,
+  getSegmentFinishDates,
   selectProgressCompletions,
 } from "@/features/reading-plan/domain/read-through";
 import { selectPlanReadings } from "@/features/reading-plan/domain/reading-kind";
@@ -337,14 +338,15 @@ export function ReadingDataProvider({
       completions,
       currentReadThrough,
     );
-    // Each read-through's own finish line, so the days between finishing one and
-    // starting the next stay finished rather than missed.
     const finishedOn = getReadThroughFinishDates(plans, completions);
+    // Each segment's own finish line, measured in its read-through, so the days between
+    // finishing one read-through and starting the next stay finished rather than missed.
+    const segmentFinishes = getSegmentFinishDates(plans, completions, today);
     const contextFor = (
       rows: readonly ReadingCompletion[],
     ): ScheduleContext => ({
       ...createScheduleContext(plans, rows, today, undefined, progressReadings),
-      finishedOnByReadThrough: finishedOn,
+      canonFinishedOnByPlan: segmentFinishes,
     });
     return {
       plans,

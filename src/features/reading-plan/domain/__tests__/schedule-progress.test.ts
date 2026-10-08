@@ -1,7 +1,7 @@
 // Web-only (bibletrackerweb#18): createScheduleContext's `progressCompletions`, which keeps
 // extra readings on the calendar but out of the plan. schedule.test.ts is the iOS port.
 import {
-  getReadThroughFinishDates,
+  getSegmentFinishDates,
   selectProgressCompletions,
 } from "../read-through";
 import { selectPlanReadings } from "../reading-kind";
@@ -72,7 +72,7 @@ describe("createScheduleContext with progressCompletions", () => {
 describe("a second read-through", () => {
   const plans = [FIRST, SECOND];
 
-  /** The provider's view: progress counts read-through 2, finish lines are per read-through. */
+  /** The provider's view: progress counts read-through 2, finish lines are per segment. */
   function contextOn(today: string, completions: readonly ReadingCompletion[]) {
     return {
       ...createScheduleContext(
@@ -82,7 +82,7 @@ describe("a second read-through", () => {
         undefined,
         selectProgressCompletions(plans, completions, 2),
       ),
-      finishedOnByReadThrough: getReadThroughFinishDates(plans, completions),
+      canonFinishedOnByPlan: getSegmentFinishDates(plans, completions, today),
     };
   }
 
@@ -129,5 +129,51 @@ describe("a second read-through", () => {
       kind: "scheduled",
       chapters: [{ bookId: "GEN", chapter: 1 }],
     });
+  });
+});
+
+// bibletrackerweb#4: bibletrackerapp#16's first finding, which a single finish line per
+// read-through still had once the reader moved within a read-through.
+describe("a position change within a read-through", () => {
+  const revelation = makePlan({
+    id: "rev",
+    startDate: "2026-08-01",
+    startBookId: "REV",
+    startChapter: 20,
+    isActive: false,
+    endDate: "2026-08-09",
+  });
+  const genesis = makePlan({ id: "gen", startDate: "2026-08-10" });
+  const plans = [revelation, genesis];
+  const rows = [20, 21, 22].map((chapter, offset) =>
+    makeCompletion(`2026-08-0${offset + 1}`, {
+      id: `rev-${chapter}`,
+      readingPlanId: "rev",
+      bookId: "REV",
+      chapter,
+    }),
+  );
+  const context = {
+    ...createScheduleContext(
+      plans,
+      rows,
+      "2026-08-24",
+      undefined,
+      selectProgressCompletions(plans, rows, 1),
+    ),
+    canonFinishedOnByPlan: getSegmentFinishDates(plans, rows, "2026-08-24"),
+  };
+
+  it("keeps the finished segment's days finished", () => {
+    expect(calculateReadingStatus(revelation, "2026-08-05", context)).toBe(
+      "canon-complete",
+    );
+    expect(isScheduledDay(plans, "2026-08-05", context)).toBe(false);
+  });
+
+  it("still counts the new segment's unread days as missed", () => {
+    expect(calculateReadingStatus(genesis, "2026-08-12", context)).toBe(
+      "missed",
+    );
   });
 });
