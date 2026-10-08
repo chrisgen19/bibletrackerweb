@@ -128,6 +128,18 @@ describe("DayDetail: a Custom reading far from the plan", () => {
     expect(onSetExtra).not.toHaveBeenCalled();
   });
 
+  // Review on #22 (Codex): a reading on that day stays in the earlier read-through, so
+  // moving the current plan on from it would skip a chapter.
+  it("does not offer to move the plan on a day from an earlier read-through", () => {
+    const { onCountTowardPlan } = logRevelation5({
+      canMovePlan: false,
+      currentPosition: null,
+    });
+    expect(dialogButtons()).toEqual(["Keep as extra", "Count toward plan"]);
+    press("count-toward-plan");
+    expect(onCountTowardPlan).toHaveBeenCalledWith(expect.any(String), null);
+  });
+
   it("only offers to count it when there is nothing to carry on to", () => {
     const { onCountTowardPlan } = renderDetail(makeDay(), {
       focusChapter: { bookId: "REV", chapter: 22 },

@@ -152,8 +152,11 @@ export function useDayDetail(
       getChapterProgress(completionsFor(reference), reference, index),
     getCompletedOnFor: (reference: BibleReference) =>
       getChapterCompletionDate(completionsFor(reference), reference, index),
-    // The head of the unread queue: where the reader actually is.
-    currentPosition: scheduleContext.unread[0] ?? null,
+    // The head of the unread queue: where the reader actually is. A day from an earlier
+    // read-through has none, so it offers no catching up and no moving on (types.ts).
+    currentPosition:
+      earlier === null ? (scheduleContext.unread[0] ?? null) : null,
+    canMovePlan: earlier === null,
     focusChapter,
   };
 }
