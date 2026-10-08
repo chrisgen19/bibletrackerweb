@@ -1,5 +1,5 @@
-// Web-only (bibletrackerweb#18): a reader who read the whole Bible once and has just
-// started again. fixtures.ts is the iOS port and stays as it is.
+// A reader who read the whole Bible once and has just started again (spec:
+// bibletrackerweb#18). Kept apart from fixtures.ts, which the schedule tests share.
 import { PROTESTANT_CANON_INDEX } from "@/data/bible/canon-index";
 import { addDaysToDateKey } from "@/utils/date-key";
 

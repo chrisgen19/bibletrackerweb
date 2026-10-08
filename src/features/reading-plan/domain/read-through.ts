@@ -13,7 +13,7 @@ import { createScheduleContext } from "./schedule";
 import type { ReadingCompletion, ReadingPlan, ReadingPlanDraft } from "./types";
 
 /**
- * Read-throughs: a web-first addition (bibletrackerweb#18), not yet in bibletrackerapp.
+ * Read-throughs (spec: bibletrackerweb#18).
  *
  * Every plan segment belongs to a numbered time through the Bible. Plan progress (the
  * queue, what is finished, "still to finish") counts the current read-through only, so
@@ -21,7 +21,7 @@ import type { ReadingCompletion, ReadingPlan, ReadingPlanDraft } from "./types";
  * anything. The calendar and streaks keep counting every reading.
  */
 
-/** The read-through a segment belongs to. Segments without one (iOS) are the first. */
+/** The read-through a segment belongs to. Without one, it is the first. */
 export function getReadThrough(plan: ReadingPlan): number {
   return plan.readThrough ?? 1;
 }
@@ -58,18 +58,21 @@ export function selectProgressCompletions(
 
 /**
  * The read-through a chapter recorded on a day counts toward, from that day's plan
- * readings, or null when the day holds no reading of it.
+ * readings, or null when the day holds no plan reading of it.
  *
  * The day sheet measures such a chapter there rather than in the read-through governing
  * the day: on the day a new read-through starts, the chapter that finished the last one
- * is finished, not unread in the new one.
+ * is finished, not unread in the new one. Extra readings are skipped: they never count
+ * toward plan progress, whichever segment they are attached to.
  */
 export function getRecordedReadThrough(
   plans: readonly ReadingPlan[],
   dayReadings: readonly ReadingCompletion[],
   reference: BibleReference,
 ): number | null {
-  const recorded = dayReadings.find((row) => isSameReference(row, reference));
+  const recorded = dayReadings.find(
+    (row) => row.isExtra !== true && isSameReference(row, reference),
+  );
   if (recorded === undefined) return null;
   const plan = plans.find((each) => each.id === recorded.readingPlanId);
   return plan === undefined ? 1 : getReadThrough(plan);
@@ -101,10 +104,10 @@ export function getReadThroughFinishDates(
  * The canon finish date of every plan segment, each measured against the plan readings
  * of its own read-through. The provider puts this on the schedule context.
  *
- * `createScheduleContext` measures every segment against the rows it is given, which on
- * the web are the current read-through's. An earlier read-through's segments would then
- * look unfinished, and the days between finishing it and starting the next would turn
- * into missed ones. Measuring per segment, not per read-through, also keeps a finished
+ * `createScheduleContext` measures every segment against the rows it is given, which the
+ * provider passes as the current read-through's. An earlier read-through's segments would
+ * then look unfinished, and the days between finishing it and starting the next would
+ * turn into missed ones. Measuring per segment, not per read-through, also keeps a finished
  * segment finished when a position change in the same read-through opens a new one.
  */
 export function getSegmentFinishDates(

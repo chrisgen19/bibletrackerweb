@@ -79,8 +79,8 @@ export interface ScheduleContext {
    * segment turned an earlier segment's finished days into missed ones once the reader
    * moved on, and lent a later segment's date to days an earlier one still owed.
    *
-   * Web only (bibletrackerweb#18): the provider replaces this with
-   * `getSegmentFinishDates`, which measures each segment against its own read-through.
+   * The provider replaces this with `getSegmentFinishDates`, which measures each segment
+   * against its own read-through.
    */
   readonly canonFinishedOnByPlan: ReadonlyMap<string, DateKey | null>;
   /** Chapters read in full, so slots past the cached queue can be derived on demand. */
@@ -98,8 +98,9 @@ export function createScheduleContext(
   injectedIndex?: CanonIndex,
   /**
    * The rows that move the plan: the queue, what is finished and whether today's slot is
-   * used. Defaults to every row. The web passes the plan readings only, so an extra
-   * reading shows on its day (`byDate`) without stepping the queue past its chapter.
+   * used. Defaults to every row. The provider passes the current read-through's plan
+   * readings, so an extra reading shows on its day (`byDate`) without stepping the queue
+   * past its chapter.
    */
   progressCompletions: readonly ReadingCompletion[] = completions,
 ): ScheduleContext {

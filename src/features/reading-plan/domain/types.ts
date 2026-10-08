@@ -20,9 +20,8 @@ export interface ReadingPlan {
   /** Last day this segment governs, inclusive. `null` while the segment is open-ended. */
   readonly endDate: DateKey | null;
   /**
-   * Web only (bibletrackerweb#18): which time through the Bible this segment belongs to.
-   * Plan progress counts the current read-through only. Absent means 1, which is every
-   * plan the iOS app writes.
+   * Which time through the Bible this segment belongs to. Plan progress counts the current
+   * read-through only. Absent means 1, as for a segment written before read-throughs.
    */
   readonly readThrough?: number;
 }
@@ -42,8 +41,8 @@ export interface ReadingCompletion {
   readonly completedAt: number;
   /**
    * An extra reading: shown on its day and counted toward the streak, but never part of
-   * the plan's chapter progress. Absent means a plan reading, which is every row the iOS
-   * app writes.
+   * the plan's chapter progress. Absent means a plan reading, as for a row written before
+   * extra readings.
    */
   readonly isExtra?: boolean;
 }

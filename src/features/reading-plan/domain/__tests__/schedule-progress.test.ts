@@ -1,5 +1,5 @@
-// Web-only (bibletrackerweb#18): createScheduleContext's `progressCompletions`, which keeps
-// extra readings on the calendar but out of the plan. schedule.test.ts is the iOS port.
+// createScheduleContext's `progressCompletions` (spec: bibletrackerweb#18), which keeps
+// extra readings on the calendar but out of the plan, and finish lines per read-through.
 import {
   getSegmentFinishDates,
   selectProgressCompletions,
@@ -63,7 +63,7 @@ describe("createScheduleContext with progressCompletions", () => {
     expect(today.todayRecorded).toBe(false);
   });
 
-  it("counts every row when no progress rows are given, as on iOS", () => {
+  it("counts every row when no progress rows are given", () => {
     const all = createScheduleContext([plan], readings, "2026-10-03");
     expect(all.completedKeys.has("REV:5")).toBe(true);
   });

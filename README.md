@@ -8,13 +8,6 @@ This is the web counterpart of [bibletrackerapp](https://github.com/chrisgen19/b
 domain layer is ported verbatim and its test suites run unchanged. The build plan
 and phase checklist live in [issue #1](https://github.com/chrisgen19/bibletrackerweb/issues/1).
 
-**Web first:** extra readings and read-throughs ([#18](https://github.com/chrisgen19/bibletrackerweb/issues/18))
-are ahead of the iOS app until [bibletrackerapp#19](https://github.com/chrisgen19/bibletrackerapp/issues/19)
-ports them. They are additions, not changes: the ported suites still run unedited, and
-the web-only behaviour has its own tests (`reading-kind.test.ts`, `read-through.test.ts`,
-`schedule-progress.test.ts`, `extra-readings.*.test.*`, `read-throughs.db.test.ts`,
-`next-read-through-card.dom.test.tsx`).
-
 ## Stack
 
 | Concern | Choice |
@@ -137,7 +130,7 @@ The reading logic is bibletrackerapp's, unchanged; the web adds a server round t
 - **"Today" belongs to the device**, as on iOS. The server renders with the device's `tz`
   cookie (then the stored zone, then UTC); the browser corrects it after loading, re-checks
   on focus and at local midnight, and tells the server when its zone changes.
-- **Extra readings** (web only) are recorded on their day and count toward the streak,
+- **Extra readings** are recorded on their day and count toward the streak,
   but never move the plan: they are not "still to finish", and the queue does not skip
   their chapter later. A Custom-tab log is classified by `classifyCustomReading`
   (`domain/reading-kind.ts`): finishing a part-read chapter, filling a gap behind the
@@ -147,7 +140,7 @@ The reading logic is bibletrackerapp's, unchanged; the web adds a server round t
   use every reading (`scheduleContext`); today's card, the day sheet and chapter progress
   use plan readings only (`planScheduleContext`, `planReadings`). Undoing a day removes
   its plan readings and leaves its extras.
-- **Read-throughs** (web only) let the Bible be read again and again. Every plan segment
+- **Read-throughs** let the Bible be read again and again. Every plan segment
   belongs to a numbered read-through (`domain/read-through.ts`), and plan progress (the
   queue, "still to finish", chapters read, "you have finished the Bible") counts the
   current one only (`progressReadings`). Once it is finished, the progress screen offers
@@ -186,8 +179,8 @@ The screens are bibletrackerapp's, with its copy, on the same design tokens.
   cannot express them; Prisma leaves them alone when diffing.
 - The "one open plan per user" index uses Prisma's `partialIndexes` preview feature, so
   Prisma manages it instead of dropping it as unknown.
-- `reading_completion.is_extra` (web only, default `false`) marks an extra reading.
-- `reading_plan.read_through` (web only, default `1`, CHECK `>= 1`) numbers the time
+- `reading_completion.is_extra` (default `false`) marks an extra reading.
+- `reading_plan.read_through` (default `1`, CHECK `>= 1`) numbers the time
   through the Bible a segment belongs to. A reading's read-through is its segment's.
 - `prisma migrate reset` deletes all data. Only ever run it against a local database.
 
