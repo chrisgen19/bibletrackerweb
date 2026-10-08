@@ -73,7 +73,10 @@ export function CustomPanel(props: CustomPanelProps) {
       : onComplete([reference], span);
     // A refused write must not produce a continuation offer.
     if (!written) return false;
-    const draft = continuationAfterLog({ ...props, reference, span, progress });
+    const draft =
+      props.canMovePlan === false
+        ? null
+        : continuationAfterLog({ ...props, reference, span, progress });
     if (isExtra) {
       setExtraOffer({
         id,

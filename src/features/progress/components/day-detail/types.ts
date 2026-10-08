@@ -49,6 +49,12 @@ export interface DayDetailProps {
    * Genesis 1, a valid-looking selection that silently records the wrong chapter.
    */
   currentPosition: BibleReference | null;
+  /**
+   * False on a day from an earlier read-through: a reading there stays in that
+   * read-through, so moving the current plan on from it would skip a chapter the current
+   * one never counted. Defaults to true.
+   */
+  canMovePlan?: boolean;
   /** Opens straight onto the Custom tab with this chapter selected. */
   focusChapter: BibleReference | null;
 }

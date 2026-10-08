@@ -3,7 +3,7 @@
 // and the two snapshots are compared. Plan ids and timestamps are assigned by different
 // sides, so they are mapped and ignored; completion ids are chosen by the client and must
 // match exactly.
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { buildNextReadThroughDraft } from "@/features/reading-plan/domain/read-through";
 import type { ReadingPlanDraft } from "@/features/reading-plan/domain/types";
@@ -160,7 +160,19 @@ async function runBoth(steps: Step[]) {
 }
 
 describe("optimistic snapshots match the server", () => {
-  const today = getTodayDateKeyInZone(TZ);
+  // The steps are written against one "today" and the server checks dates against its
+  // own. Pinned to midday UTC (only Date is faked, and it keeps ticking), so a run that
+  // crosses midnight UTC cannot leave the server a day ahead of the steps.
+  const NOW = new Date("2026-10-08T12:00:00Z");
+  const today = getTodayDateKeyInZone(TZ, NOW);
+
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true, now: NOW });
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
 
   it("through a realistic run of reading, catching up, moving and undoing", async () => {
     await runBoth([
