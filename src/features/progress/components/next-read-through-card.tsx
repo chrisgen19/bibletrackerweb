@@ -56,9 +56,8 @@ export function NextReadThroughCard({
           <AlertDialogHeader>
             <AlertDialogTitle>{`Start ${label}?`}</AlertDialogTitle>
             <AlertDialogDescription>
-              Your plan starts again at Genesis 1 today, at the same pace.
-              Everything you have read stays on your calendar and in your
-              streaks.
+              Your plan starts again at Genesis 1, at the same pace. Everything
+              you have read stays on your calendar and in your streaks.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
