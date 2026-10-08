@@ -44,10 +44,14 @@ The database listens on **5434** so it does not clash with a native Postgres on 
 The dev database is `bibletrackerweb`; tests use their own `bibletrackerweb_test`.
 The app runs on **3100**: Google's OAuth redirect URI has to name a fixed port.
 
-To use a native Postgres instead of Docker, set its role's time zone to UTC first
-(`ALTER ROLE <role> SET timezone TO 'UTC';`). A server in another zone stores the app's
-timestamps (`completed_at`, `created_at`) shifted by its offset. The Docker database
-and production already run in UTC.
+To use a native Postgres instead of Docker, its connections must use UTC. Prisma's pg
+adapter sends timestamps without an offset, and Postgres reads such input in the session
+time zone, so a server set to another zone stores the app's timestamps (`completed_at`,
+`created_at`) shifted by its offset. The app reads its own writes back unchanged, so the
+shift only shows against database-side times or once the data moves to a UTC server.
+Add `?options=-c%20timezone%3DUTC` to `DATABASE_URL` (the Prisma CLI accepts it too), or
+run `ALTER DATABASE <db> SET timezone TO 'UTC';`. The Docker database and production
+already run in UTC.
 
 ## Scripts
 
