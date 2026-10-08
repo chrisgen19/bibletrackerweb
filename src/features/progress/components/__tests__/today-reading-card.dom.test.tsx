@@ -67,6 +67,16 @@ describe("TodayReadingCard", () => {
     expect(onMarkRead).toHaveBeenCalledTimes(1);
   });
 
+  it("marks the reading complete from a touch tap, which lands on the haptic overlay", () => {
+    const onMarkRead = vi.fn();
+    const { container } = renderCard(makeDay(), { onMarkRead });
+
+    const overlay = container.querySelector("label");
+    if (!overlay) throw new Error("no haptic overlay over Mark as Read");
+    fireEvent.click(overlay);
+    expect(onMarkRead).toHaveBeenCalledTimes(1);
+  });
+
   it("replaces the action with a confirmation once completed", () => {
     renderCard(
       makeDay({
