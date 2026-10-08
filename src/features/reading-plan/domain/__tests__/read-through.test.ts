@@ -6,6 +6,7 @@ import {
   getReadThrough,
   getReadThroughFinishDates,
   getRecordedReadThrough,
+  getSegmentFinishDates,
   isCurrentReadThroughFinished,
   selectProgressCompletions,
 } from "../read-through";
@@ -84,6 +85,52 @@ describe("getReadThroughFinishDates", () => {
       }),
     ];
     expect(getReadThroughFinishDates([late], rows).size).toBe(0);
+  });
+});
+
+// bibletrackerweb#4: the per-segment finish ported from bibletrackerapp#17, measured in
+// each segment's own read-through.
+describe("getSegmentFinishDates", () => {
+  it("measures each segment against its own read-through", () => {
+    // Against every row, read-through 2 would be finished on its first day: every
+    // chapter was read in read-through 1.
+    const finished = getSegmentFinishDates(
+      [first, second],
+      firstRun,
+      "2027-06-01",
+    );
+    expect(finished.get("first")).toBe(FIRST_FINISHED);
+    expect(finished.get("second")).toBeNull();
+  });
+
+  it("keeps a finished segment finished after a position change in the same read-through", () => {
+    // Revelation 20 finished on Aug 3, then the position moved to Genesis 1. Measured
+    // per read-through, the open Genesis segment left read-through 1 unfinished.
+    const revelation = makePlan({
+      id: "rev",
+      startDate: "2026-08-01",
+      startBookId: "REV",
+      startChapter: 20,
+      isActive: false,
+      endDate: "2026-08-09",
+    });
+    const genesis = makePlan({ id: "gen", startDate: "2026-08-10" });
+    const rows = [20, 21, 22].map((chapter, offset) =>
+      makeCompletion(`2026-08-0${offset + 1}`, {
+        id: `rev-${chapter}`,
+        readingPlanId: "rev",
+        bookId: "REV",
+        chapter,
+      }),
+    );
+
+    const finished = getSegmentFinishDates(
+      [revelation, genesis],
+      rows,
+      "2026-08-24",
+    );
+    expect(finished.get("rev")).toBe("2026-08-03");
+    expect(finished.get("gen")).toBeNull();
   });
 });
 
