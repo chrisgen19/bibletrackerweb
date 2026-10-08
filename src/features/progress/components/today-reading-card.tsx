@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 
+import { HapticTap } from "@/components/haptic-tap";
 import { Panel } from "@/components/panel";
 import { Button } from "@/components/ui/button";
 import type { ChapterProgress } from "@/features/reading-plan/domain/chapter-progress";
@@ -121,14 +122,16 @@ export function TodayReadingCard({
             </Link>
           </div>
         ) : (
-          <Button
-            size="large"
-            className="w-full"
-            onClick={onMarkRead}
-            data-testid="mark-today-read"
-          >
-            Mark as Read
-          </Button>
+          <HapticTap onTap={onMarkRead}>
+            <Button
+              size="large"
+              className="w-full"
+              onClick={onMarkRead}
+              data-testid="mark-today-read"
+            >
+              Mark as Read
+            </Button>
+          </HapticTap>
         )}
       </div>
     </Panel>
