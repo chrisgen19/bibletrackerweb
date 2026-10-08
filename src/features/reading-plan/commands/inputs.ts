@@ -65,6 +65,8 @@ export const undoReadingEntryInput = z.object({
   id: z.string().min(1).max(64),
 });
 
+export const startNextReadThroughInput = z.object({ timeZone });
+
 // Not checked as a UUID, like removal: an id that is not one matches nothing.
 export const setReadingExtraInput = z.object({
   id: z.string().min(1).max(64),
@@ -81,5 +83,8 @@ export type CompleteReadingInput = z.input<typeof completeReadingInput>;
 export type UndoReadingInput = z.input<typeof undoReadingInput>;
 export type UndoReadingEntryInput = z.input<typeof undoReadingEntryInput>;
 export type SetReadingExtraInput = z.input<typeof setReadingExtraInput>;
+export type StartNextReadThroughInput = z.input<
+  typeof startNextReadThroughInput
+>;
 export type SyncTimeZoneInput = z.input<typeof syncTimeZoneInput>;
 export type SetAppearanceInput = z.input<typeof setAppearanceInput>;

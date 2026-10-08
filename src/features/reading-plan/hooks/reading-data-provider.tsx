@@ -16,6 +16,7 @@ import {
   planForReading,
   withChangedPlan,
   withCompletedReading,
+  withNextReadThrough,
   withoutDay,
   withoutEntry,
   withReadingExtra,
@@ -26,6 +27,12 @@ import {
   type ReadingErrorCode,
   readingErrorMessage,
 } from "@/features/reading-plan/commands/results";
+import {
+  buildNextReadThroughDraft,
+  getCurrentReadThrough,
+  getReadThroughFinishDates,
+  selectProgressCompletions,
+} from "@/features/reading-plan/domain/read-through";
 import { selectPlanReadings } from "@/features/reading-plan/domain/reading-kind";
 import {
   type CompletionLookup,
@@ -69,9 +76,20 @@ interface ReadingDataValue {
   completionLookup: CompletionLookup;
   /** The calendar's view: day status and streaks count every reading. */
   scheduleContext: ScheduleContext;
-  /** Plan readings only: the chapter progress, the unread list and verse resumption. */
+  /** Plan readings from every read-through: what each day holds for the plan. */
   planReadings: readonly ReadingCompletion[];
   planCompletionLookup: CompletionLookup;
+  /**
+   * The current read-through's plan readings: chapter progress, "still to finish",
+   * chapters read and the queue (bibletrackerweb#18).
+   */
+  progressReadings: readonly ReadingCompletion[];
+  /** Which time through the Bible is in progress (1 for most readers). */
+  currentReadThrough: number;
+  /** How many times the Bible has been read through. */
+  finishedReadThroughs: number;
+  /** The current read-through is finished, so the next can start from Genesis 1. */
+  canStartNextReadThrough: boolean;
   /**
    * The plan's view, where extra readings do not exist: today's card and the day sheet,
    * so a day holding only an extra still offers its plan reading.
@@ -98,6 +116,8 @@ interface ReadingDataValue {
   undoReadingEntry: (id: string) => void;
   /** Moves one recorded reading into or out of the plan. */
   setReadingExtra: (id: string, isExtra: boolean) => void;
+  /** Starts the next read-through from Genesis 1 today. Only once this one is finished. */
+  startNextReadThrough: () => void;
   /**
    * Brings an extra reading into the plan, first moving the plan on to `draft` when given.
    * One write: the reading only joins once the plan has moved.
@@ -270,6 +290,17 @@ export function ReadingDataProvider({
     [mutate],
   );
 
+  const startNextReadThrough = useCallback(() => {
+    const active = current().activePlan;
+    if (active === null) return;
+    const draft = buildNextReadThroughDraft(active, today);
+    const created = { id: createId(), createdAt: Date.now() };
+    mutate({
+      optimistic: (s) => withNextReadThrough(s, draft, created),
+      run: () => actions.startNextReadThrough({ timeZone }),
+    });
+  }, [mutate, current, today, timeZone]);
+
   const countTowardPlan = useCallback(
     (id: string, draft: ReadingPlanDraft | null) => {
       if (draft === null) {
@@ -298,26 +329,37 @@ export function ReadingDataProvider({
   const dismissError = useCallback(() => setErrorCode(null), []);
 
   const value = useMemo<ReadingDataValue>(() => {
-    const planReadings = selectPlanReadings(snapshot.completions);
+    const { plans, activePlan, completions } = snapshot;
+    const planReadings = selectPlanReadings(completions);
+    const currentReadThrough = getCurrentReadThrough(plans, activePlan);
+    const progressReadings = selectProgressCompletions(
+      plans,
+      completions,
+      currentReadThrough,
+    );
+    // Each read-through's own finish line, so the days between finishing one and
+    // starting the next stay finished rather than missed.
+    const finishedOn = getReadThroughFinishDates(plans, completions);
+    const contextFor = (
+      rows: readonly ReadingCompletion[],
+    ): ScheduleContext => ({
+      ...createScheduleContext(plans, rows, today, undefined, progressReadings),
+      finishedOnByReadThrough: finishedOn,
+    });
     return {
-      plans: snapshot.plans,
-      activePlan: snapshot.activePlan,
-      completions: snapshot.completions,
-      completionLookup: createCompletionLookup(snapshot.completions),
-      scheduleContext: createScheduleContext(
-        snapshot.plans,
-        snapshot.completions,
-        today,
-        undefined,
-        planReadings,
-      ),
+      plans,
+      activePlan,
+      completions,
+      completionLookup: createCompletionLookup(completions),
+      scheduleContext: contextFor(completions),
       planReadings,
       planCompletionLookup: createCompletionLookup(planReadings),
-      planScheduleContext: createScheduleContext(
-        snapshot.plans,
-        planReadings,
-        today,
-      ),
+      planScheduleContext: contextFor(planReadings),
+      progressReadings,
+      currentReadThrough,
+      finishedReadThroughs: finishedOn.size,
+      canStartNextReadThrough:
+        activePlan !== null && finishedOn.has(currentReadThrough),
       today,
       hasCompletedOnboarding: snapshot.activePlan !== null,
       startPlan,
@@ -326,6 +368,7 @@ export function ReadingDataProvider({
       undoReading,
       undoReadingEntry,
       setReadingExtra,
+      startNextReadThrough,
       countTowardPlan,
       resetProgress,
       error: errorCode === null ? null : readingErrorMessage(errorCode),
@@ -341,6 +384,7 @@ export function ReadingDataProvider({
     undoReading,
     undoReadingEntry,
     setReadingExtra,
+    startNextReadThrough,
     countTowardPlan,
     resetProgress,
     errorCode,

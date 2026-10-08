@@ -19,6 +19,8 @@ export type ReadingErrorCode =
   | "unknown-chapter"
   /** A verse span that runs past the end of the chapter. */
   | "verses-out-of-range"
+  /** A new read-through starts only once the current one is finished (web only). */
+  | "not-finished"
   /** The request never got an answer (offline, a dropped connection). */
   | "network";
 
@@ -46,6 +48,8 @@ export function readingErrorMessage(code: ReadingErrorCode): string {
       return "That chapter isn't in this Bible.";
     case "verses-out-of-range":
       return "That chapter doesn't have that many verses.";
+    case "not-finished":
+      return "You can start a new read-through once you have finished the Bible.";
     case "network":
       return "Couldn't save that. Check your connection and try again.";
     case "invalid-input":

@@ -1,6 +1,10 @@
 import "server-only";
 
 import { getCanonIndex } from "@/data/bible/canon-index";
+import {
+  buildNextReadThroughDraft,
+  isCurrentReadThroughFinished,
+} from "@/features/reading-plan/domain/read-through";
 import { resolvePlanForDate } from "@/features/reading-plan/domain/schedule";
 import {
   createReadingPlan,
@@ -17,6 +21,7 @@ import {
   setAppearancePreference,
   setReadingExtra,
   setTimeZone,
+  startNextReadThrough,
 } from "@/lib/dal";
 import { compareDateKeys } from "@/utils/date-key";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -26,6 +31,7 @@ import {
   completeReadingInput,
   setAppearanceInput,
   setReadingExtraInput,
+  startNextReadThroughInput,
   startPlanInput,
   syncTimeZoneInput,
   undoReadingEntryInput,
@@ -169,14 +175,69 @@ export async function undoReadingEntryFor(
   return withSnapshot(userId);
 }
 
-/** Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18). */
+/**
+ * Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18).
+ *
+ * A reading joining the plan also moves to the segment governing its day, as a fresh plan
+ * reading would, so an extra logged before a new read-through began counts toward the new
+ * one. Leaving the plan keeps it where it is.
+ */
 export async function setReadingExtraFor(
   userId: string,
   raw: unknown,
 ): Promise<ReadingResult> {
   const input = setReadingExtraInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
-  await setReadingExtra(userId, input.data.id, input.data.isExtra);
+  const { id, isExtra } = input.data;
+
+  const readingPlanId = isExtra ? undefined : await planIdForEntry(userId, id);
+  await setReadingExtra(userId, id, isExtra, readingPlanId);
+  return withSnapshot(userId);
+}
+
+/** The segment governing an entry's day, as `completeReadingFor` picks it. */
+async function planIdForEntry(
+  userId: string,
+  id: string,
+): Promise<string | undefined> {
+  const { plans, activePlan, completions } = await getReadingSnapshot(userId);
+  const entry = completions.find((completion) => completion.id === id);
+  if (entry === undefined) return undefined;
+  return (resolvePlanForDate(plans, entry.localDate) ?? activePlan)?.id;
+}
+
+/**
+ * Starts the next time through the Bible from Genesis 1, today in the reader's zone
+ * (web only, bibletrackerweb#18). Refused until the current read-through is finished,
+ * checked here against the stored readings rather than trusting the browser.
+ */
+export async function startNextReadThroughFor(
+  userId: string,
+  raw: unknown,
+): Promise<ReadingResult> {
+  const input = startNextReadThroughInput.safeParse(raw);
+  if (!input.success) return fail("invalid-input");
+
+  const { plans, activePlan, completions } = await getReadingSnapshot(userId);
+  if (activePlan === null) return fail("no-plan");
+  if (!isCurrentReadThroughFinished(plans, activePlan, completions)) {
+    return fail("not-finished");
+  }
+
+  const draft = buildNextReadThroughDraft(
+    activePlan,
+    getTodayDateKeyInZone(input.data.timeZone),
+  );
+  // Asked again under the lock: another device may have started it, moved the position
+  // or undone a reading since. Null then: refuse, and the screen catches up.
+  const started = await startNextReadThrough(userId, draft, (stored) =>
+    isCurrentReadThroughFinished(
+      stored.plans,
+      stored.activePlan,
+      stored.completions,
+    ),
+  );
+  if (started === null) return fail("not-finished");
   return withSnapshot(userId);
 }
 
