@@ -1,8 +1,8 @@
-import type { ScheduleContext } from "@/features/reading-plan/domain/schedule";
 import {
   type CompletionLookup,
   getEarliestPlanStart,
   isScheduledDay,
+  type ScheduleContext,
 } from "@/features/reading-plan/domain/schedule";
 import type { ReadingPlan } from "@/features/reading-plan/domain/types";
 import {
