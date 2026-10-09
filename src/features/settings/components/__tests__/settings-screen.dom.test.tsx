@@ -89,7 +89,7 @@ describe("SettingsScreen", () => {
         .map((meta) => meta.content)
         .join(" ");
     renderSettings();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     await user.click(screen.getByRole("radio", { name: "Dark" }));
     expect(document.documentElement.dataset.appearance).toBe("dark");
@@ -122,7 +122,7 @@ describe("SettingsScreen", () => {
 
     async function rename(to: string) {
       renderSettings();
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       await user.click(
         screen.getByRole("button", { name: "Name, Ruth Moabite" }),
       );
@@ -169,7 +169,7 @@ describe("SettingsScreen", () => {
 
     async function change(current: string, next: string, confirm: string) {
       renderSettings();
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       await user.click(
         screen.getByRole("button", { name: "Password, Change" }),
       );
@@ -233,7 +233,7 @@ describe("SettingsScreen", () => {
     "Password, Change",
   ])("gives focus back to %s when its dialog closes", async (name) => {
     renderSettings();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const row = screen.getByRole("button", { name });
 
     row.focus();

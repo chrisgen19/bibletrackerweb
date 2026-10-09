@@ -1,6 +1,11 @@
 // Setup for the "dom" project (jsdom). React Testing Library cleans up after each test on
 // its own, since Vitest's globals are on.
+import { configure } from "@testing-library/react";
 import { vi } from "vitest";
+
+// findBy* and waitFor give up after 1s by default, which a loaded run can exceed between a
+// click and the render it causes (vitest.config.mts has the numbers).
+configure({ asyncUtilTimeout: 5_000 });
 
 // jsdom has no layout, so no media queries: every query reports "no match", which is a
 // wide-enough-to-not-matter, motion-allowed browser.
