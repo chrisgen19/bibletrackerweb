@@ -1,6 +1,7 @@
 import type { BibleReference } from "@/data/bible/canon";
 import { type CanonIndex, getCanonIndex } from "@/data/bible/canon-index";
 import { compareDateKeys, type DateKey } from "@/utils/date-key";
+
 import { getChapterProgress } from "./chapter-progress";
 import type { ReadingCompletion, ReadingPlan } from "./types";
 import {
