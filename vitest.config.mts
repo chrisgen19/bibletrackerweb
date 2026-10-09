@@ -45,6 +45,10 @@ export default defineConfig({
           name: "dom",
           include: ["src/**/__tests__/**/*.dom.test.tsx"],
           environment: "jsdom",
+          // jsdom renders are CPU-bound, and `pnpm verify` runs every project in three
+          // time zones at once, beside the database tests. A file's first render took
+          // 1s alone and 7.9s in that run (month-pager), so 5s timed tests out at random.
+          testTimeout: 15_000,
           setupFiles: ["./src/test/test-env.ts", "./src/test/dom-setup.ts"],
         },
       },

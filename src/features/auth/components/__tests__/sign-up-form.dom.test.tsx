@@ -15,7 +15,7 @@ vi.mock("@/lib/auth-client", async (importOriginal) => ({
 
 async function fillIn(confirmPassword: string) {
   render(<SignUpForm next="/" googleEnabled={false} />);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.type(screen.getByLabelText("First name"), " Ruth ");
   await user.type(screen.getByLabelText("Last name"), "Moabite");
   await user.type(screen.getByLabelText("Email"), "Ruth@Example.com");
