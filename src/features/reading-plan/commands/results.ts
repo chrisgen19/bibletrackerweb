@@ -19,7 +19,7 @@ export type ReadingErrorCode =
   | "unknown-chapter"
   /** A verse span that runs past the end of the chapter. */
   | "verses-out-of-range"
-  /** A new read-through starts only once the current one is finished (web only). */
+  /** A new read-through starts only once the current one is finished. */
   | "not-finished"
   /** The request never got an answer (offline, a dropped connection). */
   | "network";

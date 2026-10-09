@@ -95,7 +95,7 @@ function planData(
   };
 }
 
-/** The reader's latest read-through, or 1 before the first plan (web only). */
+/** The reader's latest read-through, or 1 before the first plan. */
 async function latestReadThrough(
   tx: Executor,
   userId: string,
@@ -216,7 +216,7 @@ export async function replaceActiveReadingPlan(
 }
 
 /**
- * Starts the next time through the Bible (web only, bibletrackerweb#18): the same
+ * Starts the next time through the Bible: the same
  * close-then-insert as a position change, one read-through on. Nothing is deleted;
  * plan progress simply counts the new read-through from here.
  */

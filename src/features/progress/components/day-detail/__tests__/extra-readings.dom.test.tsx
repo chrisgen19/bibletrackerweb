@@ -1,4 +1,4 @@
-// Web-only (bibletrackerweb#18): extra readings in the day sheet. The iOS port of the
+// Extra readings in the day sheet (spec: bibletrackerweb#18). The iOS port of the
 // sheet's tests is day-detail.dom.test.tsx.
 import { fireEvent, render, screen } from "@testing-library/react";
 

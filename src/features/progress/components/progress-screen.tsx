@@ -108,7 +108,7 @@ export function ProgressScreen() {
                 value: String(streaks.longest),
                 label: "longest streak",
               },
-              // Web only (bibletrackerweb#18): progress is per read-through.
+              // Progress is per read-through, so a second time through starts from 0.
               {
                 icon: Book,
                 value: chaptersRead.toLocaleString("en-US"),

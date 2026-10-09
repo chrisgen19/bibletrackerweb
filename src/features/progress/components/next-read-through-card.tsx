@@ -23,7 +23,7 @@ interface NextReadThroughCardProps {
 }
 
 /**
- * Offered once the Bible is finished (web only, bibletrackerweb#18): read it again from
+ * Offered once the Bible is finished: read it again from
  * Genesis 1 without losing anything. Shown beside today's card rather than inside it,
  * so the finishing day can show "Completed today" and this offer together.
  */

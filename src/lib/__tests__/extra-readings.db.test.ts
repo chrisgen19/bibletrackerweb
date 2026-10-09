@@ -1,4 +1,4 @@
-// Web-only (bibletrackerweb#18): extra readings in the DAL and commands. The iOS ports
+// Extra readings (spec: bibletrackerweb#18) in the DAL and commands. The iOS ports
 // (completions.db.test.ts, commands.db.test.ts) are left as they are.
 import { beforeEach, describe, expect, it } from "vitest";
 
