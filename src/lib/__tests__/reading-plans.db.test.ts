@@ -1,5 +1,5 @@
 // Ported from bibletrackerapp src/features/reading-plan/data/__tests__/
-// reading-plan-repository.test.ts. Same cases and names, plus one web-only case (marked).
+// reading-plan-repository.test.ts. Same cases and names, plus one case of the web's own (marked).
 // Each test gets its own reader instead of a fresh in-memory SQLite database.
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -126,7 +126,7 @@ describe("replaceActiveReadingPlan", () => {
     expect(closed?.startDate).toBe("2026-08-09");
   });
 
-  // Web-only case. Not a port, and pinned because "start before the active plan's
+  // The web's own case. Not a port, and pinned because "start before the active plan's
   // start" looks like an error and was flagged as one in review (#5).
   it("supersedes a plan that has not started yet", async () => {
     // Onboarded with a start date of Sep 1, then moved position on Aug 24: the

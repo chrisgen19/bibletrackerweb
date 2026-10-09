@@ -176,7 +176,7 @@ export async function undoReadingEntryFor(
 }
 
 /**
- * Moves one recorded reading into or out of the plan (web only, bibletrackerweb#18).
+ * Moves one recorded reading into or out of the plan.
  *
  * A reading joining the plan also moves to the segment governing its day, as a fresh plan
  * reading would, so an extra logged before a new read-through began counts toward the new
@@ -207,9 +207,9 @@ async function planIdForEntry(
 }
 
 /**
- * Starts the next time through the Bible from Genesis 1, today in the reader's zone
- * (web only, bibletrackerweb#18). Refused until the current read-through is finished,
- * checked here against the stored readings rather than trusting the browser.
+ * Starts the next time through the Bible from Genesis 1, today in the reader's zone.
+ * Refused until the current read-through is finished, checked here against the stored
+ * readings rather than trusting the browser.
  */
 export async function startNextReadThroughFor(
   userId: string,

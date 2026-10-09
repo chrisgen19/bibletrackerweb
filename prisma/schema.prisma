@@ -108,7 +108,7 @@ model ReadingPlan {
   isActive       Boolean   @default(true) @map("is_active")
   /// Inclusive last day this segment governs. Null while open-ended.
   endDate        DateTime? @map("end_date") @db.Date
-  /// Which time through the Bible this segment belongs to (web only). Plan progress
+  /// Which time through the Bible this segment belongs to. Plan progress
   /// counts the current read-through only; the calendar and streaks count every one.
   readThrough    Int       @default(1) @map("read_through")
 

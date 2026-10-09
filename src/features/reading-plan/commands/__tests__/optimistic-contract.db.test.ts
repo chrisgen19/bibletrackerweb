@@ -237,7 +237,6 @@ describe("optimistic snapshots match the server", () => {
     ]);
   });
 
-  // Web-only (bibletrackerweb#18).
   it("through extra readings: logged, switched, and kept when the day is undone", async () => {
     await runBoth([
       { kind: "start", draft: makeDraft({ startDate: "2026-01-01" }) },
@@ -291,7 +290,6 @@ describe("optimistic snapshots match the server", () => {
     ]);
   });
 
-  // Web-only (bibletrackerweb#18).
   it("through a finished Bible and the next read-through", async () => {
     await runBoth([
       {
@@ -321,7 +319,6 @@ describe("optimistic snapshots match the server", () => {
     ]);
   });
 
-  // Web-only (bibletrackerweb#18).
   it("through extras logged before the next read-through joining it", async () => {
     await runBoth([
       {
@@ -363,7 +360,6 @@ describe("optimistic snapshots match the server", () => {
     ]);
   });
 
-  // Web-only (bibletrackerweb#18).
   it("through a plan reading of a chapter already logged as an extra", async () => {
     await runBoth([
       { kind: "start", draft: makeDraft({ startDate: "2026-01-01" }) },

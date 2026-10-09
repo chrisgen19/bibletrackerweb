@@ -1,4 +1,4 @@
-// Web-only (bibletrackerweb#18): starting the next read-through.
+// Starting the next read-through (spec: bibletrackerweb#18).
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { NextReadThroughCard } from "../next-read-through-card";
