@@ -2,15 +2,8 @@ import { format } from "date-fns";
 
 import type { BibleReference } from "@/data/bible/canon";
 import type { CanonIndex } from "@/data/bible/canon-index";
-import {
-  distinctReferences,
-  formatReferenceSpan,
-} from "@/features/reading-plan/domain/reference";
+import { distinctReferences } from "@/features/reading-plan/domain/reference";
 import type { ReadingCompletion } from "@/features/reading-plan/domain/types";
-import {
-  formatVerseRanges,
-  mergeVerseRanges,
-} from "@/features/reading-plan/domain/verse-range";
 import {
   addDaysToDateKey,
   compareDateKeys,
@@ -19,6 +12,7 @@ import {
 } from "@/utils/date-key";
 
 import { type MonthKey, monthKeyFromDateKey } from "./calendar-month";
+import { describePassages } from "./reading-journal";
 
 /** What one day holds, ready to show. */
 export interface DaySummary {
@@ -43,54 +37,7 @@ function toReference(row: ReadingCompletion): BibleReference {
   return { bookId: row.bookId, chapter: row.chapter };
 }
 
-function chapterKey(reference: BibleReference): string {
-  return `${reference.bookId}:${reference.chapter}`;
-}
-
-/** Contiguous chapters of one book, so Genesis 1, 2, 3 reads as one span. */
-function groupRuns(references: readonly BibleReference[]): BibleReference[][] {
-  const runs: BibleReference[][] = [];
-  for (const reference of references) {
-    const run = runs[runs.length - 1];
-    const last = run?.[run.length - 1];
-    if (
-      run !== undefined &&
-      last?.bookId === reference.bookId &&
-      last.chapter + 1 === reference.chapter
-    ) {
-      run.push(reference);
-    } else {
-      runs.push([reference]);
-    }
-  }
-  return runs;
-}
-
-/** "Genesis 24", "Genesis 1-3, Psalms 23", or "Genesis 24:1-20" for part of a chapter. */
-export function formatPassages(
-  rows: readonly ReadingCompletion[],
-  index: CanonIndex,
-): string {
-  return groupRuns(distinctReferences(rows.map(toReference)))
-    .map((run) => {
-      const span = formatReferenceSpan(run, index);
-      const only = run.length === 1 ? run[0] : undefined;
-      if (only === undefined) return span;
-      const sittings = rows.filter(
-        (row) => chapterKey(row) === chapterKey(only),
-      );
-      // One whole-chapter sitting makes the chapter whole, whatever else was logged.
-      if (sittings.some((row) => row.verses === null)) return span;
-      const ranges = sittings.flatMap((row) =>
-        row.verses === null ? [] : [row.verses],
-      );
-      // Sittings can overlap; no clamp is needed, as the rows were checked when saved.
-      const merged = mergeVerseRanges(ranges, Number.MAX_SAFE_INTEGER);
-      return `${span}:${formatVerseRanges(merged)}`;
-    })
-    .join(", ");
-}
-
+/** Worded as the journal words the same day, so a square and its row never disagree. */
 export function summarizeDay(
   rows: readonly ReadingCompletion[] | undefined,
   index: CanonIndex,
@@ -99,8 +46,8 @@ export function summarizeDay(
   const plan = rows.filter((row) => row.isExtra !== true);
   const extras = rows.filter((row) => row.isExtra === true);
   return {
-    passage: plan.length === 0 ? null : formatPassages(plan, index),
-    extra: extras.length === 0 ? null : formatPassages(extras, index),
+    passage: plan.length === 0 ? null : describePassages(plan, index),
+    extra: extras.length === 0 ? null : describePassages(extras, index),
     chapters: distinctReferences(rows.map(toReference)).length,
   };
 }

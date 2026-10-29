@@ -6,6 +6,8 @@ import type { ReadingCompletion } from "@/features/reading-plan/domain/types";
 import { buildHeatmap, heatLevel, summarizeDay } from "../reading-heatmap";
 
 const index = PROTESTANT_CANON_INDEX;
+// The en dash the reference formatter joins a span with.
+const SPAN = String.fromCharCode(0x2013);
 
 function inputFor(
   rows: readonly ReadingCompletion[],
@@ -58,6 +60,58 @@ describe("summarizeDay", () => {
       index,
     );
     expect(summary?.passage).toBe("Genesis 24:1");
+  });
+
+  // Each of these once read differently on the heatmap than on the journal row.
+  it("puts chapters logged out of order back in canon order", () => {
+    const summary = summarizeDay(
+      [3, 1, 2].map((chapter) =>
+        makeCompletion("2026-10-20", {
+          id: `gen-${chapter}`,
+          bookId: "GEN",
+          chapter,
+        }),
+      ),
+      index,
+    );
+    expect(summary?.passage).toBe(`Genesis 1${SPAN}3`);
+  });
+
+  it("keeps a part-read chapter out of a span of whole ones", () => {
+    const summary = summarizeDay(
+      [
+        makeCompletion("2026-10-20", { id: "a", bookId: "GEN", chapter: 1 }),
+        makeCompletion("2026-10-20", {
+          id: "b",
+          bookId: "GEN",
+          chapter: 2,
+          verses: { from: 1, to: 5 },
+        }),
+      ],
+      index,
+    );
+    expect(summary?.passage).toBe(`Genesis 1, Genesis 2:1${SPAN}5`);
+  });
+
+  it("reads verse sittings that cover the chapter as the whole chapter", () => {
+    const summary = summarizeDay(
+      [
+        makeCompletion("2026-10-20", {
+          id: "a",
+          bookId: "GEN",
+          chapter: 1,
+          verses: { from: 1, to: 10 },
+        }),
+        makeCompletion("2026-10-20", {
+          id: "b",
+          bookId: "GEN",
+          chapter: 1,
+          verses: { from: 11, to: 31 },
+        }),
+      ],
+      index,
+    );
+    expect(summary?.passage).toBe("Genesis 1");
   });
 });
 
