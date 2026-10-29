@@ -19,6 +19,7 @@ import {
   replaceActiveReadingPlan,
   resetAllProgress,
   setAppearancePreference,
+  setCalendarViewPreference,
   setReadingExtra,
   setTimeZone,
   startNextReadThrough,
@@ -30,6 +31,7 @@ import {
   changePlanInput,
   completeReadingInput,
   setAppearanceInput,
+  setCalendarViewInput,
   setReadingExtraInput,
   startNextReadThroughInput,
   startPlanInput,
@@ -264,5 +266,15 @@ export async function setAppearanceFor(
   const input = setAppearanceInput.safeParse(raw);
   if (!input.success) return fail("invalid-input");
   await setAppearancePreference(userId, input.data.appearance);
+  return { ok: true };
+}
+
+export async function setCalendarViewFor(
+  userId: string,
+  raw: unknown,
+): Promise<SettingResult> {
+  const input = setCalendarViewInput.safeParse(raw);
+  if (!input.success) return fail("invalid-input");
+  await setCalendarViewPreference(userId, input.data.view);
   return { ok: true };
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { readingPlanDraftSchema } from "@/features/reading-plan/domain/plan-draft";
-import { appearanceSchema } from "@/lib/settings";
+import { appearanceSchema, calendarViewSchema } from "@/lib/settings";
 import { isValidDateKey } from "@/utils/date-key";
 import { isValidTimeZone } from "@/utils/zoned-date-key";
 
@@ -77,6 +77,8 @@ export const syncTimeZoneInput = z.object({ timeZone });
 
 export const setAppearanceInput = z.object({ appearance: appearanceSchema });
 
+export const setCalendarViewInput = z.object({ view: calendarViewSchema });
+
 export type StartPlanInput = z.input<typeof startPlanInput>;
 export type ChangePlanInput = z.input<typeof changePlanInput>;
 export type CompleteReadingInput = z.input<typeof completeReadingInput>;
@@ -88,3 +90,4 @@ export type StartNextReadThroughInput = z.input<
 >;
 export type SyncTimeZoneInput = z.input<typeof syncTimeZoneInput>;
 export type SetAppearanceInput = z.input<typeof setAppearanceInput>;
+export type SetCalendarViewInput = z.input<typeof setCalendarViewInput>;

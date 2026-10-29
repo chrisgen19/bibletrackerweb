@@ -7,6 +7,7 @@ import type {
   ChangePlanInput,
   CompleteReadingInput,
   SetAppearanceInput,
+  SetCalendarViewInput,
   SetReadingExtraInput,
   StartNextReadThroughInput,
   StartPlanInput,
@@ -95,6 +96,14 @@ export async function syncTimeZone(
     });
   }
   return result;
+}
+
+/** Stores the calendar view chosen on a phone, for every device the reader signs in on. */
+export async function setCalendarView(
+  input: SetCalendarViewInput,
+): Promise<SettingResult> {
+  const user = await requireUser();
+  return commands.setCalendarViewFor(user.id, input);
 }
 
 /** Stores the appearance and sets this device's cookie, so it renders without a flash. */

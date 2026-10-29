@@ -28,9 +28,9 @@ interface CalendarSurfaceProps {
 }
 
 /**
- * The calendar card. A week strip by default, so the home screen opens on this week
- * rather than a month of mostly past days; the month grid is one tap away and grows out
- * of the same card.
+ * The calendar card: the month grid on desktop, and on a phone the view last chosen
+ * there, a week strip until the reader picks otherwise. Either grows out of the same
+ * card.
  */
 export function CalendarSurface({
   view,
@@ -41,19 +41,35 @@ export function CalendarSurface({
 }: CalendarSurfaceProps) {
   const showMonth = view.mode === "month";
   const weekLabel = describeWeek(view.weekStart, today);
+  const monthTitle = monthWindow.current.calendar.title;
   const summary = useRecentReadingSummary();
 
   return (
     <Panel variant="raised">
       <MonthNavigator
-        title={showMonth ? monthWindow.current.calendar.title : weekLabel}
+        title={
+          view.followsWidth ? (
+            <>
+              <span className="lg:hidden">{weekLabel}</span>
+              <span className="hidden lg:inline">{monthTitle}</span>
+            </>
+          ) : showMonth ? (
+            monthTitle
+          ) : (
+            weekLabel
+          )
+        }
         unit={view.mode}
         onPrevious={() => view.step(-1)}
         onNext={() => view.step(1)}
         onReturnToToday={view.returnToToday}
       />
 
-      <CollapsibleRegion open={!showMonth}>
+      <CollapsibleRegion
+        open={!showMonth}
+        // Until script knows the width, desktop is shown the month by CSS alone.
+        openFromLg={view.followsWidth ? false : undefined}
+      >
         <div className="pt-3">
           <WeekPager
             window={weekWindow}
@@ -65,7 +81,11 @@ export function CalendarSurface({
         </div>
       </CollapsibleRegion>
 
-      <CollapsibleRegion open={showMonth} id={MONTH_REGION_ID}>
+      <CollapsibleRegion
+        open={showMonth}
+        openFromLg={view.followsWidth ? true : undefined}
+        id={MONTH_REGION_ID}
+      >
         <div className="pt-4 pb-1">
           <MonthSummary statistics={monthWindow.current.statistics} />
           <div className="mt-4 border-t pt-3">
@@ -95,6 +115,7 @@ export function CalendarSurface({
           className={cn(
             "size-4 transition-transform duration-300 motion-reduce:transition-none",
             showMonth && "rotate-180",
+            view.followsWidth && "lg:rotate-180",
           )}
         />
       </button>

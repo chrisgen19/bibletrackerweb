@@ -4,6 +4,11 @@ import { cn } from "@/lib/utils";
 
 interface CollapsibleRegionProps {
   open: boolean;
+  /**
+   * Overrides `open` from desktop width, in CSS, for a first paint that has to match a
+   * width the server cannot see. Script takes over once it knows the width.
+   */
+  openFromLg?: boolean;
   id?: string;
   children: ReactNode;
 }
@@ -15,6 +20,7 @@ interface CollapsibleRegionProps {
  */
 export function CollapsibleRegion({
   open,
+  openFromLg,
   id,
   children,
 }: CollapsibleRegionProps) {
@@ -25,6 +31,8 @@ export function CollapsibleRegion({
       className={cn(
         "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
         open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        openFromLg === true && "lg:grid-rows-[1fr] lg:opacity-100",
+        openFromLg === false && "lg:grid-rows-[0fr] lg:opacity-0",
       )}
     >
       {/* Side padding, cancelled by the margin, keeps focus rings clear of the clip. */}

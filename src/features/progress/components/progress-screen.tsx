@@ -2,11 +2,16 @@
 
 import { Book, Calendar, Flame, Repeat } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useTransition } from "react";
 
+import { setCalendarView } from "@/actions/reading";
 import { AccountMenu } from "@/features/auth/components/account-menu";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
+import {
+  type CalendarViewPreference,
+  DEFAULT_CALENDAR_VIEW,
+} from "@/lib/settings";
 
 import { useCalendarView } from "../hooks/use-calendar-view";
 import { useMonthWindow } from "../hooks/use-month-window";
@@ -19,9 +24,20 @@ import { StatRow } from "./stat-row";
 import { TodayReadingCard } from "./today-reading-card";
 import { UnfinishedList } from "./unfinished-list";
 
+interface ProgressScreenProps {
+  /** The signed-in reader's id, which the calendar's remembered choices belong to. */
+  readerId: string;
+  /** The calendar view last chosen on a phone, from the reader's account. */
+  savedCalendarView?: CalendarViewPreference;
+}
+
 /** bibletrackerapp's ProgressScreen (src/app/index.tsx). */
-export function ProgressScreen() {
+export function ProgressScreen({
+  readerId,
+  savedCalendarView = DEFAULT_CALENDAR_VIEW,
+}: ProgressScreenProps) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const {
     hasCompletedOnboarding,
     today,
@@ -32,7 +48,16 @@ export function ProgressScreen() {
     startNextReadThrough,
   } = useReadingData();
 
-  const calendarView = useCalendarView(today);
+  const calendarView = useCalendarView(today, {
+    readerId,
+    savedView: savedCalendarView,
+    // Stored in the background: the view has already changed, and a failed write only
+    // means the next load opens on the previous choice.
+    onRemember: (view) =>
+      startTransition(async () => {
+        await setCalendarView({ view });
+      }),
+  });
   const monthWindow = useMonthWindow(calendarView.monthKey);
   const weekWindow = useWeekWindow(calendarView.weekStart);
   const streaks = useStreaks();

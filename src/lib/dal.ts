@@ -16,7 +16,10 @@ import { fromDbDate, toDbDate } from "@/lib/db-date";
 import {
   type AppearancePreference,
   appearanceSchema,
+  type CalendarViewPreference,
+  calendarViewSchema,
   DEFAULT_APPEARANCE,
+  DEFAULT_CALENDAR_VIEW,
 } from "@/lib/settings";
 import { addDaysToDateKey, type DateKey } from "@/utils/date-key";
 import { isValidTimeZone } from "@/utils/zoned-date-key";
@@ -484,6 +487,7 @@ async function readSnapshot(
 const SETTING_KEYS = {
   appearance: "appearance",
   timeZone: "time_zone",
+  calendarView: "calendar_view",
 } as const;
 
 type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
@@ -531,6 +535,27 @@ export async function setAppearancePreference(
     userId,
     SETTING_KEYS.appearance,
     appearanceSchema.parse(value),
+  );
+}
+
+/** The calendar view the reader last chose on a phone, shared by all their devices. */
+export async function getCalendarViewPreference(
+  userId: string,
+): Promise<CalendarViewPreference> {
+  const parsed = calendarViewSchema.safeParse(
+    await readSetting(userId, SETTING_KEYS.calendarView),
+  );
+  return parsed.success ? parsed.data : DEFAULT_CALENDAR_VIEW;
+}
+
+export async function setCalendarViewPreference(
+  userId: string,
+  value: CalendarViewPreference,
+): Promise<void> {
+  await writeSetting(
+    userId,
+    SETTING_KEYS.calendarView,
+    calendarViewSchema.parse(value),
   );
 }
 
