@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearAllSettings,
   getAppearancePreference,
+  getCalendarViewPreference,
   getTimeZone,
   setAppearancePreference,
+  setCalendarViewPreference,
   setTimeZone,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
@@ -34,6 +36,26 @@ describe("appearance", () => {
       data: { userId: user, key: "appearance", value: "sepia" },
     });
     expect(await getAppearancePreference(user)).toBe("system");
+  });
+});
+
+describe("calendar view", () => {
+  it("defaults to the week strip", async () => {
+    expect(await getCalendarViewPreference(user)).toBe("week");
+  });
+
+  it("stores and overwrites the preference", async () => {
+    await setCalendarViewPreference(user, "month");
+    expect(await getCalendarViewPreference(user)).toBe("month");
+    await setCalendarViewPreference(user, "week");
+    expect(await getCalendarViewPreference(user)).toBe("week");
+  });
+
+  it("degrades a corrupt stored value to the default", async () => {
+    await db.appSetting.create({
+      data: { userId: user, key: "calendar_view", value: "year" },
+    });
+    expect(await getCalendarViewPreference(user)).toBe("week");
   });
 });
 
@@ -65,9 +87,11 @@ describe("timezone", () => {
 describe("clearAllSettings", () => {
   it("removes every preference for the reader", async () => {
     await setAppearancePreference(user, "dark");
+    await setCalendarViewPreference(user, "month");
     await setTimeZone(user, "Asia/Manila");
     await clearAllSettings(user);
     expect(await getAppearancePreference(user)).toBe("system");
+    expect(await getCalendarViewPreference(user)).toBe("week");
     expect(await getTimeZone(user)).toBeNull();
   });
 });

@@ -12,3 +12,9 @@ export const appearanceSchema = z.enum(["system", "light", "dark"]);
 export type AppearancePreference = z.infer<typeof appearanceSchema>;
 
 export const DEFAULT_APPEARANCE: AppearancePreference = "system";
+
+/** Which calendar the home screen opens on below desktop width. Desktop always opens on the month. */
+export const calendarViewSchema = z.enum(["week", "month"]);
+export type CalendarViewPreference = z.infer<typeof calendarViewSchema>;
+
+export const DEFAULT_CALENDAR_VIEW: CalendarViewPreference = "week";

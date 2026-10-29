@@ -13,6 +13,7 @@ const { requireUser, commands, setCookie } = vi.hoisted(() => ({
     resetProgressFor: vi.fn(),
     syncTimeZoneFor: vi.fn(),
     setAppearanceFor: vi.fn(),
+    setCalendarViewFor: vi.fn(),
   },
   setCookie: vi.fn(),
 }));
@@ -26,6 +27,7 @@ import {
   completeReading,
   resetProgress,
   setAppearance,
+  setCalendarView,
   startPlan,
   syncTimeZone,
   undoReading,
@@ -53,6 +55,7 @@ const cases = [
   ["undoReadingEntry", undoReadingEntry, { id: "x" }, "undoReadingEntryFor"],
   ["syncTimeZone", syncTimeZone, { timeZone: "UTC" }, "syncTimeZoneFor"],
   ["setAppearance", setAppearance, { appearance: "dark" }, "setAppearanceFor"],
+  ["setCalendarView", setCalendarView, { view: "month" }, "setCalendarViewFor"],
 ] as const;
 
 type CommandName = keyof typeof commands;

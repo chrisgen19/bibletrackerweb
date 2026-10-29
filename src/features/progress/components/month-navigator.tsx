@@ -1,9 +1,10 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { IconButton } from "@/components/icon-button";
 
 interface MonthNavigatorProps {
-  title: string;
+  title: ReactNode;
   onPrevious: () => void;
   onNext: () => void;
   /** Shown when the reader has moved away from the current month. */

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getAllReadingPlans, getReadingSnapshot, getTimeZone } from "@/lib/dal";
+import {
+  getAllReadingPlans,
+  getCalendarViewPreference,
+  getReadingSnapshot,
+  getTimeZone,
+} from "@/lib/dal";
 import { db } from "@/lib/db";
 import {
   transactionIdOf,
@@ -15,6 +20,7 @@ import {
   changePlanFor,
   completeReadingFor,
   resetProgressFor,
+  setCalendarViewFor,
   startPlanFor,
   syncTimeZoneFor,
   undoReadingEntryFor,
@@ -354,6 +360,20 @@ describe("undo and reset", () => {
       ok: false,
       error: "invalid-input",
     });
+  });
+});
+
+describe("setCalendarViewFor", () => {
+  it("stores a known view and refuses anything else", async () => {
+    expect(await setCalendarViewFor(user, { view: "month" })).toEqual({
+      ok: true,
+    });
+    expect(await getCalendarViewPreference(user)).toBe("month");
+    expect(await setCalendarViewFor(user, { view: "year" })).toEqual({
+      ok: false,
+      error: "invalid-input",
+    });
+    expect(await getCalendarViewPreference(user)).toBe("month");
   });
 });
 
