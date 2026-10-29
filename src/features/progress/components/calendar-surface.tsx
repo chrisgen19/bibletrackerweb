@@ -80,6 +80,8 @@ export function CalendarSurface({
         </div>
       </CollapsibleRegion>
 
+      {/* One name in both states: it names the region, and aria-expanded says whether it
+          is open, so a screen reader never hears "Show week, expanded". */}
       <button
         type="button"
         aria-expanded={showMonth}
@@ -87,7 +89,7 @@ export function CalendarSurface({
         onClick={view.toggle}
         className="mx-auto mt-2 -mb-2 flex min-h-11 items-center gap-1 rounded-full px-4 text-footnote font-semibold text-primary outline-none transition-colors hover:bg-primary-soft focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        {showMonth ? "Show week" : "Show month"}
+        Month view
         <ChevronDown
           aria-hidden
           className={cn(
