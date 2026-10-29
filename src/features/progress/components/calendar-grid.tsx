@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { DayReading } from "@/features/reading-plan/domain/types";
 import type { DateKey } from "@/utils/date-key";
 
@@ -7,6 +9,7 @@ import {
   WEEKDAY_LABELS,
 } from "../domain/calendar-month";
 import { CALENDAR_ROW_HEIGHT, CalendarDay } from "./calendar-day";
+import { getChainShapes } from "./chain-shape";
 
 interface CalendarGridProps {
   month: CalendarMonth;
@@ -31,13 +34,21 @@ export function WeekdayHeader() {
   );
 }
 
-/** A single month's day grid. The pager renders three of these side by side. */
+/**
+ * A single month's day grid. The pager renders three of these side by side.
+ * Read days in a row join into one band, so a run reads as an unbroken chain.
+ */
 export function CalendarGrid({
   month,
   readings,
   today,
   onSelectDay,
 }: CalendarGridProps) {
+  const shapes = useMemo(
+    () => getChainShapes(month, readings),
+    [month, readings],
+  );
+
   return (
     <div>
       {month.weeks.map((week) => {
@@ -56,6 +67,7 @@ export function CalendarGrid({
                   dayOfMonth={cell.dayOfMonth}
                   inCurrentMonth={cell.inCurrentMonth}
                   isToday={cell.date === today}
+                  shape={shapes.get(cell.date)}
                   onSelect={onSelectDay}
                 />
               );

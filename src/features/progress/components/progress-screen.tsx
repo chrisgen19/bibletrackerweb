@@ -2,21 +2,17 @@
 
 import { Book, Calendar, Flame, Repeat } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 
 import { AccountMenu } from "@/features/auth/components/account-menu";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 
-import {
-  addMonthsToMonthKey,
-  type MonthKey,
-  monthKeyFromDateKey,
-  monthKeysEqual,
-} from "../domain/calendar-month";
+import { useCalendarView } from "../hooks/use-calendar-view";
 import { useMonthWindow } from "../hooks/use-month-window";
 import { useReadingProgress } from "../hooks/use-reading-progress";
 import { useStreaks } from "../hooks/use-streaks";
+import { useWeekWindow } from "../hooks/use-week-window";
 import { CalendarSurface } from "./calendar-surface";
 import { NextReadThroughCard } from "./next-read-through-card";
 import { StatRow } from "./stat-row";
@@ -36,14 +32,12 @@ export function ProgressScreen() {
     startNextReadThrough,
   } = useReadingData();
 
-  const [monthKey, setMonthKey] = useState<MonthKey>(() =>
-    monthKeyFromDateKey(today),
-  );
-  const monthWindow = useMonthWindow(monthKey);
+  const calendarView = useCalendarView(today);
+  const monthWindow = useMonthWindow(calendarView.monthKey);
+  const weekWindow = useWeekWindow(calendarView.weekStart);
   const streaks = useStreaks();
   const { todayReading, todayProgress, unfinished, chaptersRead, canonIndex } =
     useReadingProgress();
-  const currentMonthKey = useMemo(() => monthKeyFromDateKey(today), [today]);
 
   // A reset on this or another device ends the plan: back to onboarding, as on iOS.
   // Only once it is stored, or the server would still see the plan and send us back.
@@ -66,17 +60,11 @@ export function ProgressScreen() {
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
         <CalendarSurface
-          window={monthWindow}
+          view={calendarView}
+          monthWindow={monthWindow}
+          weekWindow={weekWindow}
           today={today}
           onSelectDay={(date) => router.push(`/day/${date}`)}
-          onStepMonth={(step) =>
-            setMonthKey((key) => addMonthsToMonthKey(key, step))
-          }
-          onReturnToToday={
-            monthKeysEqual(monthKey, currentMonthKey)
-              ? undefined
-              : () => setMonthKey(currentMonthKey)
-          }
         />
         <div className="grid gap-6">
           <TodayReadingCard

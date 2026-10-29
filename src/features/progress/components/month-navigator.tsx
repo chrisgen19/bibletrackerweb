@@ -8,6 +8,8 @@ interface MonthNavigatorProps {
   onNext: () => void;
   /** Shown when the reader has moved away from the current month. */
   onReturnToToday?: () => void;
+  /** What a step moves by, for the buttons' labels: "month" unless the strip shows weeks. */
+  unit?: "week" | "month";
 }
 
 export function MonthNavigator({
@@ -15,6 +17,7 @@ export function MonthNavigator({
   onPrevious,
   onNext,
   onReturnToToday,
+  unit = "month",
 }: MonthNavigatorProps) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -26,7 +29,7 @@ export function MonthNavigator({
           <button
             type="button"
             onClick={onReturnToToday}
-            aria-label="Jump to the current month"
+            aria-label={`Jump to the current ${unit}`}
             className="mt-0.5 rounded-sm py-1 text-footnote text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             Back to today
@@ -36,10 +39,14 @@ export function MonthNavigator({
       <div className="flex items-center gap-1">
         <IconButton
           icon={ChevronLeft}
-          label="Previous month"
+          label={`Previous ${unit}`}
           onClick={onPrevious}
         />
-        <IconButton icon={ChevronRight} label="Next month" onClick={onNext} />
+        <IconButton
+          icon={ChevronRight}
+          label={`Next ${unit}`}
+          onClick={onNext}
+        />
       </div>
     </div>
   );
