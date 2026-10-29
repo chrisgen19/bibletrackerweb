@@ -7,6 +7,8 @@ import type {
 } from "@/features/reading-plan/domain/types";
 import { fromDateKey } from "@/utils/date-key";
 
+import type { HeatCell } from "../domain/reading-heatmap";
+
 export interface DayAppearance {
   /** Circle fill behind the numeral, if any. Completed days bloom a fill of their own. */
   fill: "none" | "muted";
@@ -84,4 +86,33 @@ export function describeDay(day: DayReading, isToday: boolean): string {
   return [prefix, reference, STATUS_DESCRIPTION[day.status]]
     .filter((part) => part !== null)
     .join(", ");
+}
+
+const HEAT_STATE_DESCRIPTION: Record<HeatCell["state"], string | null> = {
+  read: STATUS_DESCRIPTION.completed,
+  quiet: STATUS_DESCRIPTION.missed,
+  outside: STATUS_DESCRIPTION["before-plan"],
+  future: null,
+};
+
+/** "Monday 24 August, Genesis 24, plus Psalms 23 as an extra, completed" */
+export function describeHeatCell(cell: HeatCell, isToday: boolean): string {
+  const datePart = format(fromDateKey(cell.date), "EEEE d MMMM");
+  const prefix = isToday ? `Today, ${datePart}` : datePart;
+  const summary = cell.summary;
+  const status =
+    isToday && cell.state === "quiet"
+      ? STATUS_DESCRIPTION["today-pending"]
+      : HEAT_STATE_DESCRIPTION[cell.state];
+
+  const reading =
+    summary === null
+      ? null
+      : summary.passage === null
+        ? `${summary.extra} as an extra`
+        : summary.extra === null
+          ? summary.passage
+          : `${summary.passage}, plus ${summary.extra} as an extra`;
+
+  return [prefix, reading, status].filter((part) => part !== null).join(", ");
 }
