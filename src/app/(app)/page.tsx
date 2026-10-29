@@ -13,6 +13,7 @@ export default async function ProgressPage() {
   if ((await getActiveReadingPlan(user.id)) === null) redirect("/onboarding");
   return (
     <ProgressScreen
+      readerId={user.id}
       savedCalendarView={await getCalendarViewPreference(user.id)}
     />
   );

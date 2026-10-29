@@ -23,13 +23,22 @@ export type CalendarMode = CalendarViewPreference;
 /** Where the home screen turns into two columns, and the calendar opens on the month. */
 export const DESKTOP_QUERY = "(min-width: 1024px)";
 
-// What the reader picked in this tab, per screen size. Coming back to the home screen
-// (or pressing Back, which can restore a page rendered before the choice was stored)
-// keeps it until the next full load.
-const chosenThisVisit: {
-  desktop: CalendarMode | null;
-  phone: CalendarMode | null;
-} = { desktop: null, phone: null };
+/** A choice per side of the breakpoint, so turning a tablet never carries one across. */
+interface Choices {
+  readonly desktop: CalendarMode | null;
+  readonly phone: CalendarMode | null;
+}
+
+const NO_CHOICES: Choices = { desktop: null, phone: null };
+
+// What the reader picked in this tab, kept until the next full load: coming back to the
+// home screen, or pressing Back to a page rendered before the choice was stored, opens
+// on it. Tied to the reader, as signing in as someone else does not reload the page.
+let thisVisit: { readerId: string; choices: Choices } | null = null;
+
+function choicesThisVisit(readerId: string): Choices {
+  return thisVisit?.readerId === readerId ? thisVisit.choices : NO_CHOICES;
+}
 
 export interface CalendarView {
   mode: CalendarMode;
@@ -49,6 +58,8 @@ export interface CalendarView {
 }
 
 interface CalendarViewOptions {
+  /** The signed-in reader, so one reader's choices never open for the next. */
+  readerId: string;
   /** The view last chosen on a phone, from the reader's account. */
   savedView: CalendarMode;
   /** Called with a choice made below desktop width, to store it on the account. */
@@ -63,18 +74,15 @@ interface CalendarViewOptions {
  */
 export function useCalendarView(
   today: DateKey,
-  { savedView, onRemember }: CalendarViewOptions,
+  { readerId, savedView, onRemember }: CalendarViewOptions,
 ): CalendarView {
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
-  const [choice, setChoice] = useState<CalendarMode | null>(null);
+  const [choices, setChoices] = useState(() => choicesThisVisit(readerId));
   const [weekStart, setWeekStart] = useState(() => startOfWeekKey(today));
   const [monthKey, setMonthKey] = useState(() => monthKeyFromDateKey(today));
 
-  const mode =
-    choice ??
-    (isDesktop
-      ? (chosenThisVisit.desktop ?? "month")
-      : (chosenThisVisit.phone ?? savedView));
+  const side = isDesktop ? "desktop" : "phone";
+  const mode = choices[side] ?? (isDesktop ? "month" : savedView);
 
   const currentWeek = startOfWeekKey(today);
   const currentMonth = monthKeyFromDateKey(today);
@@ -84,13 +92,10 @@ export function useCalendarView(
       : monthKeysEqual(monthKey, currentMonth);
 
   function choose(next: CalendarMode) {
-    setChoice(next);
-    if (isDesktop) {
-      chosenThisVisit.desktop = next;
-      return;
-    }
-    chosenThisVisit.phone = next;
-    onRemember(next);
+    const updated = { ...choices, [side]: next };
+    setChoices(updated);
+    thisVisit = { readerId, choices: updated };
+    if (!isDesktop) onRemember(next);
   }
 
   function toggle() {
@@ -123,7 +128,7 @@ export function useCalendarView(
 
   return {
     mode,
-    followsWidth: choice === null && !isDesktop && mode === "week",
+    followsWidth: !isDesktop && choices.phone === null && mode === "week",
     weekStart,
     monthKey,
     step,

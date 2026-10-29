@@ -25,12 +25,15 @@ import { TodayReadingCard } from "./today-reading-card";
 import { UnfinishedList } from "./unfinished-list";
 
 interface ProgressScreenProps {
+  /** The signed-in reader's id, which the calendar's remembered choices belong to. */
+  readerId: string;
   /** The calendar view last chosen on a phone, from the reader's account. */
   savedCalendarView?: CalendarViewPreference;
 }
 
 /** bibletrackerapp's ProgressScreen (src/app/index.tsx). */
 export function ProgressScreen({
+  readerId,
   savedCalendarView = DEFAULT_CALENDAR_VIEW,
 }: ProgressScreenProps) {
   const router = useRouter();
@@ -46,6 +49,7 @@ export function ProgressScreen({
   } = useReadingData();
 
   const calendarView = useCalendarView(today, {
+    readerId,
     savedView: savedCalendarView,
     // Stored in the background: the view has already changed, and a failed write only
     // means the next load opens on the previous choice.
