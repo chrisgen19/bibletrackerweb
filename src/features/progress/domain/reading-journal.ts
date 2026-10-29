@@ -20,6 +20,7 @@ import {
   formatVerseRanges,
   isChapterComplete,
   mergeVerseRanges,
+  wholeChapter,
 } from "@/features/reading-plan/domain/verse-range";
 import {
   addDaysToDateKey,
@@ -282,16 +283,59 @@ export interface RecentReading {
 }
 
 /**
+ * Distinct chapters finished from `from` to `to`, extras included.
+ *
+ * A chapter is finished on the day its sittings first add up to all of it, so verses 1 to
+ * 10 on 31 January and the rest on 1 February finish it in February, as the reading
+ * plan's own progress counts it. Once whole, the next sitting starts the chapter afresh,
+ * so reading it again in a later read-through finishes it again.
+ */
+export function countChaptersFinished(
+  rows: readonly ReadingCompletion[],
+  range: { from: DateKey; to: DateKey },
+  index: CanonIndex,
+): number {
+  const sorted = [...rows].sort(
+    (a, b) =>
+      compareDateKeys(a.localDate, b.localDate) ||
+      a.completedAt - b.completedAt,
+  );
+  const sittings = new Map<string, VerseRange[]>();
+  const finished = new Set<string>();
+
+  for (const row of sorted) {
+    if (compareDateKeys(row.localDate, range.to) > 0) break;
+    const key = `${row.bookId}:${row.chapter}`;
+    const verseCount = index.getVerseCount(row);
+    const ranges = sittings.get(key) ?? [];
+    if (verseCount !== null)
+      ranges.push(row.verses ?? wholeChapter(verseCount));
+    // A chapter the canon cannot measure counts as whole, as collectChapters treats it.
+    if (verseCount !== null && !isChapterComplete(ranges, verseCount)) {
+      sittings.set(key, ranges);
+      continue;
+    }
+    sittings.delete(key);
+    if (compareDateKeys(row.localDate, range.from) >= 0) finished.add(key);
+  }
+  return finished.size;
+}
+
+/**
  * The numbers behind the journal's one-line summary. The week ends yesterday while today
  * is still unread, so a morning never counts as a missed day.
  */
 export function summariseRecentReading({
   plans,
   completions,
+  rows,
   context,
   today,
   index,
-}: Omit<JournalInput, "weeks" | "firstDate">): RecentReading {
+}: Omit<JournalInput, "weeks" | "firstDate"> & {
+  /** Every reading, not just this month's: a chapter can be begun before the 1st. */
+  readonly rows: readonly ReadingCompletion[];
+}): RecentReading {
   const end = completions.has(today) ? today : addDaysToDateKey(today, -1);
   let readDays = 0;
   let windowDays = 0;
@@ -302,18 +346,11 @@ export function summariseRecentReading({
     if (completions.has(date)) readDays += 1;
   }
 
-  const monthRows: ReadingCompletion[] = [];
-  const firstOfMonth = `${today.slice(0, 8)}01`;
-  for (
-    let date = firstOfMonth;
-    compareDateKeys(date, today) <= 0;
-    date = addDaysToDateKey(date, 1)
-  ) {
-    monthRows.push(...(completions.get(date) ?? []));
-  }
-  const chaptersThisMonth = collectChapters(monthRows, index).filter(
-    (chapter) => chapter.verses === null,
-  ).length;
+  const chaptersThisMonth = countChaptersFinished(
+    rows,
+    { from: `${today.slice(0, 8)}01`, to: today },
+    index,
+  );
 
   return { readDays, windowDays, chaptersThisMonth };
 }

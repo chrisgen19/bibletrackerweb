@@ -23,8 +23,14 @@ const MORE_WEEKS = 3;
 
 /** "5 of the last 7 days. 23 chapters this month.", or null before anything is read. */
 export function useRecentReadingSummary(): string | null {
-  const { plans, activePlan, completionLookup, scheduleContext, today } =
-    useReadingData();
+  const {
+    plans,
+    activePlan,
+    completions,
+    completionLookup,
+    scheduleContext,
+    today,
+  } = useReadingData();
 
   return useMemo(
     () =>
@@ -32,12 +38,13 @@ export function useRecentReadingSummary(): string | null {
         summariseRecentReading({
           plans,
           completions: completionLookup,
+          rows: completions,
           context: scheduleContext,
           today,
           index: getCanonIndex(activePlan?.canonId ?? DEFAULT_CANON_ID),
         }),
       ),
-    [plans, activePlan, completionLookup, scheduleContext, today],
+    [plans, activePlan, completions, completionLookup, scheduleContext, today],
   );
 }
 

@@ -12,6 +12,7 @@ import type { DateKey } from "@/utils/date-key";
 
 import {
   buildReadingJournal,
+  countChaptersFinished,
   describePassages,
   describeRecentReading,
   describeWeek,
@@ -40,7 +41,7 @@ function journalFor(rows: readonly ReadingCompletion[], today = TODAY) {
       firstDate: PLAN.startDate,
       weeks: 2,
     }),
-    recent: summariseRecentReading(input),
+    recent: summariseRecentReading({ ...input, rows }),
   };
 }
 
@@ -187,6 +188,39 @@ describe("recent reading", () => {
     // The window ends yesterday: 22 to 28 October.
     expect(recent.readDays).toBe(1);
     expect(recent.windowDays).toBe(7);
+  });
+
+  it("counts a chapter in the month its last verses were read", () => {
+    const rows = [
+      makeCompletion("2026-01-31", {
+        id: "first-half",
+        verses: { from: 1, to: 10 },
+      }),
+      makeCompletion("2026-02-01", {
+        id: "second-half",
+        verses: { from: 11, to: 31 },
+      }),
+    ];
+    const finishedIn = (from: DateKey, to: DateKey) =>
+      countChaptersFinished(rows, { from, to }, index);
+
+    expect(finishedIn("2026-01-01", "2026-01-31")).toBe(0);
+    expect(finishedIn("2026-02-01", "2026-02-01")).toBe(1);
+  });
+
+  it("counts a chapter read again in a later month", () => {
+    const rows = [
+      makeCompletion("2026-01-05", { id: "first-time" }),
+      makeCompletion("2026-02-05", { id: "second-time" }),
+    ];
+
+    expect(
+      countChaptersFinished(
+        rows,
+        { from: "2026-02-01", to: "2026-02-28" },
+        index,
+      ),
+    ).toBe(1);
   });
 
   it("says nothing about a week without reading", () => {
