@@ -44,6 +44,7 @@ export function UsernameForm({
     resolver: zodResolver(setUsernameInput),
     defaultValues: { username: initial },
   });
+  const usernameField = register("username");
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -72,7 +73,12 @@ export function UsernameForm({
           spellCheck={false}
           enterKeyHint="done"
           error={errors.username?.message}
-          {...register("username")}
+          {...usernameField}
+          onChange={(event) => {
+            // The server's error was about the old value: drop it once the user edits.
+            setFormError(null);
+            return usernameField.onChange(event);
+          }}
         />
         <p className="text-footnote text-muted-foreground">
           3 to 20 letters, numbers or underscores

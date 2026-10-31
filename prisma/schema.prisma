@@ -218,5 +218,6 @@ model Friendship {
 
   @@unique([userAId, userBId])
   @@index([userBId])
+  @@index([requestedById, status])
   @@map("friendship")
 }

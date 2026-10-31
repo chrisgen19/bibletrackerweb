@@ -84,6 +84,8 @@ describe("searchUsernameFor", () => {
       "no spaces allowed",
       "",
       "@@",
+      // Only one leading "@" is stripped, as when choosing a username.
+      `@@${aliceName}`,
     ]) {
       expect(await searchUsernameFor(bob, { query })).toEqual({
         ok: true,

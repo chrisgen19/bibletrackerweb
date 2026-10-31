@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  normalizeUsername,
-  usernameSchema,
-} from "@/features/friends/domain/username";
+import { usernameSchema } from "@/features/friends/domain/username";
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -74,7 +71,7 @@ export async function searchUsernameFor(
   if (!parsed.success) return fail("invalid-input");
   // Longer than any handle (and than the input allows): nobody, not an error.
   if (parsed.data.query.length > 64) return { ok: true, match: null };
-  const name = usernameSchema.safeParse(normalizeUsername(parsed.data.query));
+  const name = usernameSchema.safeParse(parsed.data.query);
   if (!name.success) return { ok: true, match: null };
 
   const handle = await findUserByUsername(name.data);
