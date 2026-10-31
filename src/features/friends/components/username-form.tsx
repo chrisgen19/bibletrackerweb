@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
@@ -34,6 +34,7 @@ export function UsernameForm({
   onSaved,
   onCancel,
 }: UsernameFormProps) {
+  const id = useId();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -63,7 +64,7 @@ export function UsernameForm({
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       <div className="grid gap-2">
         <TextField
-          id="username"
+          id={`${id}-username`}
           label="Username"
           autoComplete="username"
           autoCapitalize="none"

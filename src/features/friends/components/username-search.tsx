@@ -27,14 +27,20 @@ export function UsernameSearch() {
     const result = await search.run(() => searchUsername({ query: text }), {
       refresh: false,
     });
-    if (result === null) return;
+    if (result === null) {
+      setSearched(null);
+      setMatch(null);
+      return;
+    }
     setSearched(text);
     setMatch(result.match);
   }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (query.trim() !== "") void find(query);
+    if (query.trim() === "") return;
+    row.clearError();
+    void find(query);
   }
 
   /** Runs a row action, then searches again so the row's relationship is fresh. */

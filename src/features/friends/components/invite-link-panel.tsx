@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Share } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { resetInvite } from "@/actions/friends";
 import { Panel } from "@/components/panel";
@@ -25,6 +25,12 @@ export function InviteLinkPanel({ inviteUrl }: { inviteUrl: string }) {
   const [url, setUrl] = useState(inviteUrl);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  // False on the server and during hydration, so the Share button cannot mismatch.
+  const canShare = useSyncExternalStore(
+    () => () => {},
+    () => "share" in navigator,
+    () => false,
+  );
 
   async function copy() {
     setCopyFailed(false);
@@ -66,7 +72,7 @@ export function InviteLinkPanel({ inviteUrl }: { inviteUrl: string }) {
           )}
           {copied ? "Copied" : "Copy"}
         </Button>
-        {typeof navigator !== "undefined" && "share" in navigator ? (
+        {canShare ? (
           <Button variant="secondary" size="medium" onClick={share}>
             <Share aria-hidden className="size-4" />
             Share

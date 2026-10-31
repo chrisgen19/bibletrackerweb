@@ -148,6 +148,24 @@ describe("FriendsScreen", () => {
     expect(actions.declineAllRequests).toHaveBeenCalledTimes(1);
   });
 
+  it("shows why Decline all failed, after its dialog closes", async () => {
+    actions.declineAllRequests.mockResolvedValue({
+      ok: false,
+      error: "network",
+    });
+    renderScreen({ ...EMPTY, incoming: [1, 2, 3, 4, 5, 6].map(profile) });
+
+    await userEvent.click(screen.getByRole("button", { name: "Decline all" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Decline all" }),
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Couldn't save that",
+    );
+  });
+
   it("confirms before removing a friend", async () => {
     renderScreen({ ...EMPTY, friends: [profile(1)] });
 
