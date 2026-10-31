@@ -1,7 +1,7 @@
 # Friends: friend profile (phase 2a)
 
 Date: 2026-10-31
-Status: approved
+Status: implemented
 
 ## Why
 

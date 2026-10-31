@@ -77,6 +77,7 @@ next phase and builds on the tables defined here.
 | Search result | any signed-in reader typing an exact username | `@username` only |
 | Sent (outgoing pending) | the requester | `@username` only |
 | Friends list | each friend | name, photo, `@username` |
+| Friend profile `/friends/<username>` | each accepted friend | name, photo, `@username`, and full reading data (see 2026-10-31-friend-profile-design.md) |
 
 The reasoning: the link only reaches people its owner sent it to, and someone sending a
 request has chosen to be seen. Search is the one place a stranger can go looking, so it
