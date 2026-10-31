@@ -49,7 +49,7 @@ export function SettingsScreen({
         : formatReference(position, getCanonIndex(activePlan.canonId));
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-24">
+    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-tab-bar">
       <ScreenHeader title="Settings" backHref="/profile" backLabel="Profile" />
 
       <section aria-labelledby="plan-heading">

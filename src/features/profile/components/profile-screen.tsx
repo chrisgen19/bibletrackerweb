@@ -20,45 +20,49 @@ export function ProfileScreen() {
   const { chaptersRead } = useReadingProgress();
   const { finishedReadThroughs } = useReadingData();
   const name = account.name.trim();
+  const stats = [
+    { value: String(streaks.current), label: "day streak" },
+    { value: chaptersRead.toLocaleString("en-US"), label: "chapters read" },
+    { value: String(finishedReadThroughs), label: "times through" },
+  ];
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 pt-6 pb-24">
-      <h1 className="mb-6 text-large-title">Profile</h1>
+    <main className="mx-auto w-full max-w-lg px-5 pt-6 pb-tab-bar">
+      <h1 className="text-large-title">Profile</h1>
 
-      <Panel className="flex items-center gap-4">
+      {/* The avatar wears the tab bar's lens, so the tab and the screen read as one. */}
+      <div className="mt-6 flex flex-col items-center text-center">
         <span
           aria-hidden
-          className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-soft text-title text-primary"
+          className="droplet flex size-24 items-center justify-center rounded-full text-display text-primary"
         >
           {initialOf(account.name, account.email)}
         </span>
-        <div className="min-w-0">
-          {name === "" ? null : (
-            <p className="truncate text-headline">{name}</p>
-          )}
-          <p className="truncate text-callout text-muted-foreground">
-            {account.email}
-          </p>
-        </div>
-      </Panel>
+        {name === "" ? null : (
+          <p className="mt-4 max-w-full truncate text-title">{name}</p>
+        )}
+        <p
+          className={
+            name === ""
+              ? "mt-4 max-w-full truncate text-headline"
+              : "mt-1 max-w-full truncate text-callout text-muted-foreground"
+          }
+        >
+          {account.email}
+        </p>
+      </div>
 
-      <section aria-labelledby="reading-heading" className="mt-6">
+      <section aria-labelledby="reading-heading" className="mt-8">
         <SectionHeader id="reading-heading" title="Your reading" />
         <Panel padded={false} className="grid grid-cols-3 divide-x">
-          {[
-            { value: String(streaks.current), label: "day streak" },
-            {
-              value: chaptersRead.toLocaleString("en-US"),
-              label: "chapters this read-through",
-            },
-            {
-              value: String(finishedReadThroughs),
-              label: "times through",
-            },
-          ].map(({ value, label }) => (
-            <p key={label} className="px-3 py-4 text-center">
-              <span className="block text-headline">{value}</span>
-              <span className="block text-footnote text-faint">{label}</span>
+          {stats.map(({ value, label }) => (
+            <p key={label} className="px-2 py-4 text-center">
+              <span className="block text-title text-primary tabular-nums">
+                {value}
+              </span>
+              <span className="mt-0.5 block text-footnote text-muted-foreground">
+                {label}
+              </span>
             </p>
           ))}
         </Panel>

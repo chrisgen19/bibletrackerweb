@@ -135,6 +135,36 @@
   --card-shadow: 0 4px 12px rgb(59 46 32 / 0.05);
   --raised-shadow: 0 8px 20px rgb(59 46 32 / 0.09);
 
+  /* Liquid glass for the navigation layer only; content stays on solid surfaces. */
+  --glass-fill: rgb(255 255 255 / 0.55);
+  --glass-rim: rgb(255 255 255 / 0.7);
+  --glass-sheen: rgb(255 255 255 / 0.85);
+  --glass-shade: rgb(59 46 32 / 0.08);
+  --glass-drop: 0 10px 30px rgb(59 46 32 / 0.14);
+  --lens-tint: color-mix(in oklab, var(--primary) 14%, transparent);
+  --lens-rim: rgb(255 255 255 / 0.9);
+  /* A spring with one overshoot, as linear() stops (about 0.6s, damping 0.7). */
+  --ease-lens: linear(
+    0,
+    0.032 1.6%,
+    0.126 3.4%,
+    0.457 8.5%,
+    0.746 13.4%,
+    0.922 17.6%,
+    1.04 21.9%,
+    1.093 25.8%,
+    1.106 29.6%,
+    1.093 34%,
+    1.058 39.4%,
+    1.012 47.9%,
+    0.993 55%,
+    0.989 61.8%,
+    0.999 78.6%,
+    1
+  );
+  /* Room under a screen's content for the floating tab bar, when it is shown. */
+  --tab-bar-clearance: 0px;
+
   /* Nested, so it compiles to :root:where(...); a top-level @variant would not match. */
   @variant dark {
     color-scheme: dark;
@@ -165,6 +195,91 @@
     --ring: #7c5c3f;
     --card-shadow: none;
     --raised-shadow: none;
+
+    --glass-fill: rgb(28 26 24 / 0.55);
+    --glass-rim: rgb(255 255 255 / 0.12);
+    --glass-sheen: rgb(255 255 255 / 0.1);
+    --glass-shade: rgb(0 0 0 / 0.35);
+    --glass-drop: 0 10px 30px rgb(0 0 0 / 0.45);
+    --lens-tint: color-mix(in oklab, var(--primary) 22%, transparent);
+    --lens-rim: rgb(255 240 225 / 0.35);
+  }
+}
+
+:root:has([data-tab-bar]) {
+  --tab-bar-clearance: calc(
+    4.25rem +
+    max(0.75rem, env(safe-area-inset-bottom))
+  );
+}
+
+@utility pb-tab-bar {
+  padding-bottom: max(6rem, calc(var(--tab-bar-clearance) + 1.75rem));
+}
+
+@layer components {
+  /* The bar: frosted, colourless, with a lit top edge and a shaded bottom one. */
+  .glass-bar {
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-rim);
+    box-shadow:
+      inset 0 1px 0 var(--glass-sheen),
+      inset 0 -1px 0 var(--glass-shade),
+      var(--glass-drop);
+    backdrop-filter: blur(18px) saturate(180%);
+  }
+
+  /* The lens: a tinted droplet with a specular rim. Clearer than the bar, so it reads as thicker. */
+  .glass-lens {
+    background:
+      radial-gradient(120% 90% at 30% 0%, var(--glass-sheen), transparent 55%),
+      var(--lens-tint);
+    box-shadow:
+      inset 0 1px 1px var(--lens-rim),
+      inset 0 -2px 3px var(--glass-shade),
+      inset 0 0 0 1px color-mix(in oklab, var(--primary) 20%, transparent),
+      0 6px 16px color-mix(in oklab, var(--primary) 18%, transparent);
+    backdrop-filter: blur(3px) saturate(200%) brightness(1.06);
+  }
+
+  /* Chromium only: refract what is behind the lens through the SVG displacement map. */
+  [data-refract] .glass-lens {
+    backdrop-filter: url(#lens-refract) blur(1.5px) saturate(200%)
+      brightness(1.06);
+  }
+
+  /* The lens material on content, solid: avatars and icons that rhyme with the tab bar. */
+  .droplet {
+    background:
+      radial-gradient(120% 90% at 30% 0%, var(--glass-sheen), transparent 55%),
+      var(--primary-soft);
+    box-shadow:
+      inset 0 1px 1px var(--lens-rim),
+      inset 0 -2px 3px var(--glass-shade),
+      inset 0 0 0 1px color-mix(in oklab, var(--primary) 20%, transparent);
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass-bar {
+      background: var(--card);
+    }
+    .glass-lens {
+      background: var(--primary-soft);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-bar,
+    .glass-lens,
+    [data-refract] .glass-lens {
+      backdrop-filter: none;
+    }
+    .glass-bar {
+      background: var(--card);
+    }
+    .glass-lens {
+      background: var(--primary-soft);
+    }
   }
 }
 

@@ -4,7 +4,6 @@ import { endOfMonth } from "date-fns";
 import { useEffect, useRef, useState } from "react";
 
 import { Panel } from "@/components/panel";
-import { ScreenHeader } from "@/components/screen-header";
 import {
   compareDateKeys,
   type DateKey,
@@ -65,12 +64,8 @@ export function HistoryScreen() {
   }, [revealed]);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 pt-4 pb-24">
-      <ScreenHeader
-        title="Reading history"
-        backHref="/"
-        backLabel="Your Reading"
-      />
+    <main className="mx-auto w-full max-w-2xl px-5 pt-4 pb-tab-bar">
+      <h1 className="mt-2 mb-6 text-large-title">Reading history</h1>
 
       <Panel variant="raised">
         <ReadingHeatmap

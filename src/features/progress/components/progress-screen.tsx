@@ -76,7 +76,7 @@ export function ProgressScreen({
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-5 pt-6 pb-24">
+    <main className="mx-auto w-full max-w-5xl px-5 pt-6 pb-tab-bar">
       <h1 className="mb-3 flex min-h-11 items-center text-large-title">
         Your Reading
       </h1>
