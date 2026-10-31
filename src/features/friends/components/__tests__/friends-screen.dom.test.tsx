@@ -2,8 +2,9 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
-  FriendProfile,
+  FriendListEntry,
   FriendsOverview,
+  ReadTodayStatus,
 } from "@/features/friends/domain/types";
 import { navigation, router } from "@/test/dom-setup";
 
@@ -25,11 +26,20 @@ vi.mock("@/actions/friends", () => actions);
 const EMPTY: FriendsOverview = { friends: [], incoming: [], outgoing: [] };
 const INVITE = "https://example.test/add/abc123";
 
-const profile = (n: number): FriendProfile => ({
+const profile = (n: number): FriendListEntry => ({
   userId: `u${n}`,
   username: `reader${n}`,
   name: `Reader ${n}`,
   image: null,
+  readToday: "not-yet",
+});
+
+const withStatus = (
+  n: number,
+  readToday: ReadTodayStatus,
+): FriendListEntry => ({
+  ...profile(n),
+  readToday,
 });
 
 function renderScreen(overview: FriendsOverview = EMPTY, username = "ruth") {
@@ -497,5 +507,58 @@ describe("FriendsScreen", () => {
     expect(screen.getByText("3 friends")).toBeTruthy();
     const list = screen.getByRole("list", { name: "Friends" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("links each friend to their profile", () => {
+    renderScreen({ ...EMPTY, friends: [profile(1)] });
+
+    const link = screen.getByRole("link", { name: /Reader 1/ });
+    expect(link.getAttribute("href")).toBe("/friends/reader1");
+  });
+
+  it("shows the read-today mark as text", () => {
+    renderScreen({
+      ...EMPTY,
+      friends: [
+        withStatus(1, "read"),
+        withStatus(2, "not-yet"),
+        withStatus(3, "no-plan"),
+      ],
+    });
+
+    const [read, notYet, noPlan] = within(
+      screen.getByRole("list", { name: "Friends" }),
+    ).getAllByRole("listitem");
+    if (!read || !notYet || !noPlan) throw new Error("expected three rows");
+    expect(within(read).getByText("Read today")).toBeTruthy();
+    expect(within(notYet).getByText("Not yet today")).toBeTruthy();
+    expect(within(noPlan).queryByText("Read today")).toBeNull();
+    expect(within(noPlan).queryByText("Not yet today")).toBeNull();
+  });
+
+  it("keeps the options button outside the profile link", () => {
+    renderScreen({ ...EMPTY, friends: [profile(1)] });
+
+    const link = screen.getByRole("link", { name: /Reader 1/ });
+    const options = screen.getByRole("button", {
+      name: "Options for Reader 1",
+    });
+    expect(link.contains(options)).toBe(false);
+  });
+
+  it("keeps the given order whatever the statuses", () => {
+    renderScreen({
+      ...EMPTY,
+      friends: [withStatus(1, "no-plan"), withStatus(2, "read"), profile(3)],
+    });
+
+    const links = within(
+      screen.getByRole("list", { name: "Friends" }),
+    ).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/friends/reader1",
+      "/friends/reader2",
+      "/friends/reader3",
+    ]);
   });
 });

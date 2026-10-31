@@ -1,3 +1,4 @@
+import type { ReadingPerspective } from "@/features/reading-plan/domain/reading-view";
 import {
   type CompletionLookup,
   getEarliestPlanStart,
@@ -112,12 +113,21 @@ export function getProgressHorizon(
   return minDateKey(monthLastDay, today);
 }
 
-export function describeMonthProgress(stats: MonthStatistics): string {
+/**
+ * The month headline. `perspective` is whose reading it is: a friend's profile says "the
+ * plan", since "your plan" would read as the viewer's own.
+ */
+export function describeMonthProgress(
+  stats: MonthStatistics,
+  perspective: ReadingPerspective = "self",
+): string {
   switch (stats.kind) {
     case "no-plan":
       return "No reading plan yet";
     case "before-plan":
-      return "Before your plan began";
+      return perspective === "friend"
+        ? "Before the plan began"
+        : "Before your plan began";
     case "future":
       return `${stats.scheduledDays} ${stats.scheduledDays === 1 ? "day" : "days"} scheduled`;
     case "past":

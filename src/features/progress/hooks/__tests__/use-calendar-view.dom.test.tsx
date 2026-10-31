@@ -142,3 +142,60 @@ describe("across the breakpoint, as when a tablet turns", () => {
     expect(result.current.mode).toBe("week");
   });
 });
+
+describe("when today moves on with the tab open", () => {
+  async function renderAcrossMidnight(savedView: CalendarMode, from: DateKey) {
+    vi.resetModules();
+    const { useCalendarView } = await import("../use-calendar-view");
+    return renderHook(
+      ({ today }) =>
+        useCalendarView(today, {
+          readerId: READER,
+          savedView,
+          onRemember: vi.fn(),
+        }),
+      { initialProps: { today: from } },
+    );
+  }
+
+  it("follows today into the new month", async () => {
+    setDesktop(true);
+    const { result, rerender } = await renderAcrossMidnight(
+      "month",
+      "2026-10-31",
+    );
+
+    rerender({ today: "2026-11-01" });
+
+    expect(result.current.monthKey).toEqual({ year: 2026, month: 11 });
+    expect(result.current.returnToToday).toBeUndefined();
+  });
+
+  it("follows today into the new week", async () => {
+    setDesktop(false);
+    // Saturday 31 October, then Sunday 1 November: a new week.
+    const { result, rerender } = await renderAcrossMidnight(
+      "week",
+      "2026-10-31",
+    );
+
+    rerender({ today: "2026-11-01" });
+
+    expect(result.current.weekStart).toBe("2026-11-01");
+    expect(result.current.returnToToday).toBeUndefined();
+  });
+
+  it("stays on a month the reader stepped to", async () => {
+    setDesktop(true);
+    const { result, rerender } = await renderAcrossMidnight(
+      "month",
+      "2026-10-31",
+    );
+    act(() => result.current.step(-1));
+
+    rerender({ today: "2026-11-01" });
+
+    expect(result.current.monthKey).toEqual({ year: 2026, month: 9 });
+    expect(result.current.returnToToday).toBeDefined();
+  });
+});

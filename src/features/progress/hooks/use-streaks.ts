@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
+import { useReadingView } from "@/features/reading-plan/hooks/reading-view-context";
 
 import { calculateStreaks, type StreakSummary } from "../domain/streak";
 
 export function useStreaks(): StreakSummary {
-  const { plans, completionLookup, scheduleContext, today } = useReadingData();
+  const { plans, completionLookup, scheduleContext, today } = useReadingView();
 
   return useMemo(
     () =>

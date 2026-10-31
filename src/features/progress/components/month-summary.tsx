@@ -1,4 +1,5 @@
 import { ProgressRing } from "@/components/progress-ring";
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 
 import {
   describeMonthProgress,
@@ -18,7 +19,8 @@ interface MonthSummaryProps {
  */
 export function MonthSummary({ statistics }: MonthSummaryProps) {
   const showRing = statistics.kind === "past" || statistics.kind === "current";
-  const headline = describeMonthProgress(statistics);
+  const perspective = useReadingPerspective();
+  const headline = describeMonthProgress(statistics, perspective);
 
   const supporting =
     statistics.kind === "past" || statistics.kind === "current"

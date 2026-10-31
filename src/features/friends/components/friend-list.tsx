@@ -23,13 +23,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { FriendProfile } from "@/features/friends/domain/types";
+import type { FriendListEntry } from "@/features/friends/domain/types";
 import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
 
 import { PersonRow } from "./person-row";
+import { ReadTodayMark } from "./read-today-mark";
 
 interface FriendListProps {
-  friends: readonly FriendProfile[];
+  friends: readonly FriendListEntry[];
   /** Opens the Add friends sheet, from the empty state. */
   onAdd: () => void;
 }
@@ -61,7 +62,7 @@ export function FriendList({ friends, onAdd }: FriendListProps) {
   );
 }
 
-function FriendRow({ friend }: { friend: FriendProfile }) {
+function FriendRow({ friend }: { friend: FriendListEntry }) {
   const { run, pending, error } = useFriendAction();
   const [confirming, setConfirming] = useState(false);
   return (
@@ -69,6 +70,8 @@ function FriendRow({ friend }: { friend: FriendProfile }) {
       username={friend.username}
       name={friend.name}
       image={friend.image}
+      href={`/friends/${friend.username}`}
+      detail={<ReadTodayMark status={friend.readToday} />}
       error={error}
     >
       <DropdownMenu>

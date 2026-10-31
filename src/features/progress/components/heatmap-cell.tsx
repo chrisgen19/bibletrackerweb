@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from "react";
 
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 import { cn } from "@/lib/utils";
 import type { DateKey } from "@/utils/date-key";
 
@@ -26,6 +27,8 @@ export function HeatmapCell({
   onActivate,
   onKeyDown,
 }: HeatmapCellProps) {
+  const perspective = useReadingPerspective();
+
   if (cell.state === "future") {
     return <td className="p-0" />;
   }
@@ -36,7 +39,7 @@ export function HeatmapCell({
         type="button"
         data-date={cell.date}
         tabIndex={isSelected ? 0 : -1}
-        aria-label={describeHeatCell(cell, isToday)}
+        aria-label={describeHeatCell(cell, isToday, perspective)}
         aria-current={isToday ? "date" : undefined}
         onClick={() => onActivate(cell.date)}
         onKeyDown={(event) => onKeyDown(event, cell.date)}

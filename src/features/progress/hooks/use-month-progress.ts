@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { getDayReading } from "@/features/reading-plan/domain/schedule";
 import type { DayReading } from "@/features/reading-plan/domain/types";
-import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
+import { useReadingView } from "@/features/reading-plan/hooks/reading-view-context";
 import type { DateKey } from "@/utils/date-key";
 
 import {
@@ -29,7 +29,7 @@ export interface MonthProgress {
  * without a second pass.
  */
 export function useMonthProgress(monthKey: MonthKey): MonthProgress {
-  const { plans, completionLookup, scheduleContext, today } = useReadingData();
+  const { plans, completionLookup, scheduleContext, today } = useReadingView();
 
   return useMemo(() => {
     const calendar = buildCalendarMonth(monthKey);

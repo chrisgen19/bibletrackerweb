@@ -485,7 +485,8 @@ async function readSnapshot(
 
 // Settings (bibletrackerapp: settings-repository.ts)
 
-const SETTING_KEYS = {
+/** The `app_setting` keys. Exported so other DAL modules read the same rows, not a copy. */
+export const SETTING_KEYS = {
   appearance: "appearance",
   timeZone: "time_zone",
   calendarView: "calendar_view",

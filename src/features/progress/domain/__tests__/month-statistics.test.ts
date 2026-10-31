@@ -232,4 +232,19 @@ describe("describeMonthProgress", () => {
     });
     expect(describeMonthProgress(stats)).toBe("1 of 1 day");
   });
+
+  it("speaks of the plan, not the reader, for a friend's month before it began", () => {
+    const stats = statsFor({
+      plans: [makePlan({ startDate: "2026-09-10" })],
+      monthDates: AUGUST_2026,
+      completed: [],
+      today: "2026-10-31",
+    });
+    expect(stats.kind).toBe("before-plan");
+    expect(describeMonthProgress(stats)).toBe("Before your plan began");
+    expect(describeMonthProgress(stats, "self")).toBe("Before your plan began");
+    expect(describeMonthProgress(stats, "friend")).toBe(
+      "Before the plan began",
+    );
+  });
 });

@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { useDayHref } from "@/features/reading-plan/hooks/reading-view-context";
 import { cn } from "@/lib/utils";
 import { addDaysToDateKey, type DateKey, fromDateKey } from "@/utils/date-key";
 
@@ -48,6 +49,8 @@ export function JournalEntryRow({
   today,
   highlighted = false,
 }: JournalEntryRowProps) {
+  const dayHref = useDayHref();
+
   if (entry.kind === "quiet") {
     return (
       <div className={cn("flex gap-3 px-5 py-2", highlighted && HIGHLIGHT)}>
@@ -66,7 +69,7 @@ export function JournalEntryRow({
   if (entry.kind === "today") {
     return (
       <Link
-        href={`/day/${entry.date}`}
+        href={dayHref(entry.date)}
         className={cn(ROW_LINK, highlighted && HIGHLIGHT)}
       >
         <JournalThread below={entry.below} marker={<OpenMarker />} />
@@ -90,7 +93,7 @@ export function JournalEntryRow({
 
   return (
     <Link
-      href={`/day/${entry.date}`}
+      href={dayHref(entry.date)}
       className={cn(ROW_LINK, highlighted && HIGHLIGHT)}
     >
       <JournalThread
