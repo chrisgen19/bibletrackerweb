@@ -30,6 +30,17 @@ export function FriendCalendarCard() {
   const dayHref = useDayHref();
   const todayMonth = monthKeyFromDateKey(today);
   const [month, setMonth] = useState(todayMonth);
+
+  // The friend's today moves on when a refetch finds their new day. A calendar still on
+  // the old today's month follows it; one the viewer stepped away from stays put.
+  const [followedToday, setFollowedToday] = useState(today);
+  if (followedToday !== today) {
+    setFollowedToday(today);
+    if (monthKeysEqual(month, monthKeyFromDateKey(followedToday))) {
+      setMonth(todayMonth);
+    }
+  }
+
   const monthWindow = useMonthWindow(month);
 
   function step(amount: number) {

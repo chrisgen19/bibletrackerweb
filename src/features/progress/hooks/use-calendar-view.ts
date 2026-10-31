@@ -81,6 +81,20 @@ export function useCalendarView(
   const [weekStart, setWeekStart] = useState(() => startOfWeekKey(today));
   const [monthKey, setMonthKey] = useState(() => monthKeyFromDateKey(today));
 
+  // Today moves on at midnight while the tab stays open. A calendar still on the old
+  // today's week or month follows it; one the reader stepped away from stays put. Adjusted
+  // during render, as React recommends for state derived from a changed prop.
+  const [followedToday, setFollowedToday] = useState(today);
+  if (followedToday !== today) {
+    setFollowedToday(today);
+    if (weekStart === startOfWeekKey(followedToday)) {
+      setWeekStart(startOfWeekKey(today));
+    }
+    if (monthKeysEqual(monthKey, monthKeyFromDateKey(followedToday))) {
+      setMonthKey(monthKeyFromDateKey(today));
+    }
+  }
+
   const side = isDesktop ? "desktop" : "phone";
   const mode = choices[side] ?? (isDesktop ? "month" : savedView);
 
