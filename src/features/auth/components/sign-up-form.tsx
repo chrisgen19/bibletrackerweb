@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { setUsername } from "@/actions/friends";
 import { Button } from "@/components/ui/button";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
@@ -14,6 +15,7 @@ import { authHref } from "../safe-next-path";
 import {
   fullName,
   PASSWORD_MIN,
+  type SignUpInput,
   type SignUpValues,
   signUpSchema,
 } from "../schemas";
@@ -26,6 +28,18 @@ interface SignUpFormProps {
   googleEnabled: boolean;
 }
 
+/**
+ * Saves the username picked at sign-up. The account already exists by now, so a name that
+ * was taken (or a failed request) must not block the reader: the Friends screen asks again.
+ */
+async function claimUsername(username: string): Promise<void> {
+  try {
+    await setUsername({ username });
+  } catch {
+    // Same fallback as a taken name: picked later on Friends.
+  }
+}
+
 export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -33,7 +47,9 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpValues>({ resolver: zodResolver(signUpSchema) });
+  } = useForm<SignUpInput, unknown, SignUpValues>({
+    resolver: zodResolver(signUpSchema),
+  });
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -50,6 +66,7 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
       setFormError(authErrorMessage(error));
       return;
     }
+    if (values.username !== undefined) await claimUsername(values.username);
     router.replace(next);
     router.refresh();
   });
@@ -83,6 +100,22 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
           error={errors.email?.message}
           {...register("email")}
         />
+        <div className="grid gap-2">
+          <TextField
+            id="username"
+            label="Username (optional)"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            error={errors.username?.message}
+            {...register("username")}
+          />
+          <p className="text-footnote text-muted-foreground">
+            How friends find you. 3 to 20 letters, numbers or underscores. You
+            can pick one later.
+          </p>
+        </div>
         <TextField
           id="password"
           label={`Password (at least ${PASSWORD_MIN} characters)`}
