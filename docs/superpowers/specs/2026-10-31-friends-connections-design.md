@@ -1,7 +1,7 @@
 # Friends: connections (phase 1)
 
 Date: 2026-10-31
-Status: ready for review
+Status: implemented
 
 ## Why
 
