@@ -54,6 +54,9 @@ export function FriendReadingProvider({
     staleTime: 0,
     refetchOnMount: false,
     refetchOnWindowFocus: true,
+    // Dropped once the profile closes: the server-rendered `initial` of the next visit is
+    // at least as fresh as anything cached, and a stale 404 must not outlive a re-friend.
+    gcTime: 0,
     retry: (count, failure) =>
       !(failure instanceof FriendGoneError) && count < 3,
   });

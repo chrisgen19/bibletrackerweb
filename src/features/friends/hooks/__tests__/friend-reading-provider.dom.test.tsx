@@ -94,4 +94,56 @@ describe("FriendReadingProvider", () => {
     expect(screen.queryByTestId("child")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  describe("opening the profile again", () => {
+    const LATER: FriendReading = { snapshot: EMPTY, today: "2026-11-01" };
+
+    function mount(queryClient: QueryClient, initial: FriendReading) {
+      return render(
+        <QueryClientProvider client={queryClient}>
+          <FriendReadingProvider username="maria" initial={initial}>
+            <Probe id="child" />
+          </FriendReadingProvider>
+        </QueryClientProvider>,
+      );
+    }
+
+    /** Lets TanStack's zero-delay garbage collection of the unmounted query run. */
+    const settle = () => act(() => new Promise((r) => setTimeout(r, 0)));
+
+    it("uses the new server data when the profile is opened again", async () => {
+      const queryClient = new QueryClient();
+      mount(queryClient, FRIEND).unmount();
+      await settle();
+
+      mount(queryClient, LATER);
+
+      expect(screen.getByTestId("child").textContent).toBe(
+        "2026-11-01 /friends/maria/day/2026-10-28",
+      );
+    });
+
+    it("does not keep showing the unavailable state once the server renders the profile", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({ error: "not-found" }, { status: 404 }),
+        ),
+      );
+      const queryClient = new QueryClient();
+      const first = mount(queryClient, FRIEND);
+      act(() => focusManager.setFocused(false));
+      act(() => focusManager.setFocused(true));
+      await screen.findByText("This profile isn't available");
+      first.unmount();
+      await settle();
+
+      mount(queryClient, LATER);
+
+      expect(screen.getByTestId("child").textContent).toBe(
+        "2026-11-01 /friends/maria/day/2026-10-28",
+      );
+      expect(screen.queryByText("This profile isn't available")).toBeNull();
+    });
+  });
 });
