@@ -1,11 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
   FriendProfile,
   FriendsOverview,
 } from "@/features/friends/domain/types";
-import { router } from "@/test/dom-setup";
+import { navigation, router } from "@/test/dom-setup";
 
 import { FriendsScreen } from "../friends-screen";
 
@@ -43,8 +43,25 @@ function renderScreen(overview: FriendsOverview = EMPTY, username = "ruth") {
   );
 }
 
+/** Opens the Add friends sheet, where the invite link, search and Sent live. */
+async function openAddSheet() {
+  await userEvent.click(screen.getByRole("button", { name: "Add friends" }));
+  return screen.findByRole("dialog", { name: "Add friends" });
+}
+
+/** Unfolds the requests banner above the friends list. */
+async function openRequests(count: number) {
+  await userEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(`${count} people want to read with you`),
+    }),
+  );
+}
+
 beforeEach(() => {
   localStorage.clear();
+  navigation.search = "";
+  window.history.replaceState(null, "", "/friends");
   for (const action of Object.values(actions)) {
     action.mockReset();
     action.mockResolvedValue({ ok: true });
@@ -146,6 +163,7 @@ describe("FriendsScreen", () => {
       },
     });
     renderScreen();
+    await openAddSheet();
 
     await userEvent.type(screen.getByLabelText("Username to search"), "maria");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
@@ -164,6 +182,7 @@ describe("FriendsScreen", () => {
       },
     });
     renderScreen();
+    await openAddSheet();
     await userEvent.type(screen.getByLabelText("Username to search"), "maria");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add" }));
@@ -175,6 +194,7 @@ describe("FriendsScreen", () => {
   it("says when no one has that username", async () => {
     actions.searchUsername.mockResolvedValue({ ok: true, match: null });
     renderScreen();
+    await openAddSheet();
 
     await userEvent.type(screen.getByLabelText("Username to search"), "nobody");
     await userEvent.click(screen.getByRole("button", { name: "Search" }));
@@ -182,22 +202,26 @@ describe("FriendsScreen", () => {
     expect(await screen.findByText("No one with that username")).toBeTruthy();
   });
 
-  it("hides Requests and Sent when empty", () => {
+  it("hides Requests and Waiting on when empty", async () => {
     renderScreen();
 
-    expect(screen.queryByText("Requests")).toBeNull();
-    expect(screen.queryByText("Sent")).toBeNull();
+    expect(screen.queryByRole("region", { name: /Requests/ })).toBeNull();
     expect(screen.getByText("No friends yet")).toBeTruthy();
+    const sheet = await openAddSheet();
+    expect(within(sheet).queryByText("Waiting on")).toBeNull();
   });
 
-  it("offers Decline all only above five incoming", () => {
+  it("offers Decline all only above five incoming", async () => {
     const five = { ...EMPTY, incoming: [1, 2, 3, 4, 5].map(profile) };
     renderScreen(five);
+    await openRequests(5);
+    expect(screen.getAllByRole("button", { name: "Accept" })).toHaveLength(5);
     expect(screen.queryByRole("button", { name: "Decline all" })).toBeNull();
   });
 
   it("offers Decline all with six incoming, behind a confirm", async () => {
     renderScreen({ ...EMPTY, incoming: [1, 2, 3, 4, 5, 6].map(profile) });
+    await openRequests(6);
 
     await userEvent.click(screen.getByRole("button", { name: "Decline all" }));
     expect(actions.declineAllRequests).not.toHaveBeenCalled();
@@ -215,6 +239,7 @@ describe("FriendsScreen", () => {
       error: "network",
     });
     renderScreen({ ...EMPTY, incoming: [1, 2, 3, 4, 5, 6].map(profile) });
+    await openRequests(6);
 
     await userEvent.click(screen.getByRole("button", { name: "Decline all" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -249,6 +274,7 @@ describe("FriendsScreen", () => {
   it("confirms before resetting the invite link", async () => {
     actions.resetInvite.mockResolvedValue({ ok: true, code: "new" });
     renderScreen();
+    await openAddSheet();
 
     await userEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(actions.resetInvite).not.toHaveBeenCalled();
@@ -261,5 +287,215 @@ describe("FriendsScreen", () => {
     );
 
     expect(actions.resetInvite).toHaveBeenCalledTimes(1);
+  });
+  it("folds incoming requests into one banner that opens in place", async () => {
+    renderScreen({ ...EMPTY, incoming: [1, 2, 3, 4].map(profile) });
+
+    expect(
+      screen.getByRole("region", { name: "Requests, 4 pending" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Reader 1, Reader 2 and 2 more")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
+
+    await openRequests(4);
+    const accepts = screen.getAllByRole("button", { name: "Accept" });
+    expect(accepts).toHaveLength(4);
+    expect(window.location.search).toBe("?requests=open");
+
+    const [first] = accepts;
+    if (first === undefined) throw new Error("no Accept button");
+    await userEvent.click(first);
+    expect(actions.acceptRequest).toHaveBeenCalledWith({ userId: "u1" });
+  });
+
+  it("names the one person when a single request waits", () => {
+    renderScreen({ ...EMPTY, incoming: [profile(3)] });
+
+    expect(
+      screen.getByRole("button", { name: /Reader 3 wants to read with you/ }),
+    ).toBeTruthy();
+  });
+
+  it("opens the requests from the URL", () => {
+    navigation.search = "?requests=open";
+    renderScreen({ ...EMPTY, incoming: [1, 2].map(profile) });
+
+    expect(screen.getAllByRole("button", { name: "Accept" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Decline" })).toHaveLength(2);
+  });
+
+  it("keeps the username, link and Sent in the Add friends sheet", async () => {
+    renderScreen({
+      ...EMPTY,
+      outgoing: [{ userId: "u7", username: "boaz" }],
+    });
+    expect(screen.queryByText(INVITE)).toBeNull();
+
+    const sheet = await openAddSheet();
+    expect(window.location.search).toBe("?sheet=add");
+    expect(within(sheet).getByText("@ruth")).toBeTruthy();
+    expect(within(sheet).getByText(INVITE)).toBeTruthy();
+    expect(within(sheet).getByText("Waiting on")).toBeTruthy();
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(actions.cancelRequest).toHaveBeenCalledWith({ userId: "u7" });
+  });
+
+  it("opens the Add friends sheet from the URL", () => {
+    navigation.search = "?sheet=add";
+    renderScreen();
+
+    expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
+  });
+
+  it("pushes a history entry for the sheet, and closing goes back", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+
+    await openAddSheet();
+    expect(pushState).toHaveBeenCalledWith(
+      expect.anything(),
+      "",
+      "/friends?sheet=add",
+    );
+    await userEvent.keyboard("{Escape}");
+
+    expect(back).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog", { name: "Add friends" })).toBeNull();
+    pushState.mockRestore();
+    back.mockRestore();
+  });
+
+  it("does not go back when the sheet was opened from a link", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    navigation.search = "?sheet=add";
+    window.history.replaceState(null, "", "/friends?sheet=add");
+    renderScreen();
+
+    await userEvent.keyboard("{Escape}");
+
+    // Going back would leave the app; the param is dropped in place instead.
+    expect(back).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("");
+    back.mockRestore();
+  });
+
+  it("keeps the requests banner in place, without a history entry", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    renderScreen({ ...EMPTY, incoming: [profile(1), profile(2)] });
+
+    await openRequests(2);
+
+    expect(window.location.search).toBe("?requests=open");
+    expect(pushState).not.toHaveBeenCalled();
+    pushState.mockRestore();
+  });
+
+  it("opens the Add friends sheet when the URL changes while mounted", () => {
+    // A fresh element each time, as a new URL re-renders the screen in the app.
+    const view = () => (
+      <FriendsScreen
+        userId="me"
+        username="ruth"
+        inviteUrl={INVITE}
+        overview={EMPTY}
+      />
+    );
+    const { rerender } = render(view());
+    expect(screen.queryByRole("dialog", { name: "Add friends" })).toBeNull();
+
+    navigation.search = "?sheet=add";
+    rerender(view());
+
+    expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
+  });
+
+  it("closes the Add friends sheet when the URL drops the param, as Back does", () => {
+    navigation.search = "?sheet=add";
+    const view = () => (
+      <FriendsScreen
+        userId="me"
+        username="ruth"
+        inviteUrl={INVITE}
+        overview={EMPTY}
+      />
+    );
+    const { rerender } = render(view());
+    expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
+
+    navigation.search = "";
+    rerender(view());
+
+    expect(screen.queryByRole("dialog", { name: "Add friends" })).toBeNull();
+  });
+
+  it("returns the focus to the empty state's button that opened the sheet", async () => {
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+    const invite = screen.getByRole("button", { name: "Invite a friend" });
+
+    invite.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Add friends" });
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(document.activeElement).toBe(invite));
+    vi.restoreAllMocks();
+  });
+
+  it("returns the focus to the header button that opened the sheet", async () => {
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+    const add = screen.getByRole("button", { name: "Add friends" });
+
+    add.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Add friends" });
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(document.activeElement).toBe(add));
+    vi.restoreAllMocks();
+  });
+
+  it("changes the username from the sheet", async () => {
+    renderScreen();
+    const sheet = await openAddSheet();
+
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Change" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change username",
+    });
+    const field = within(dialog).getByLabelText("Username");
+    await userEvent.clear(field);
+    await userEvent.type(field, "ruth_m");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(actions.setUsername).toHaveBeenCalledWith({ username: "ruth_m" });
+    expect(router.refresh).toHaveBeenCalled();
+  });
+
+  it("starts adding from the empty friends list", async () => {
+    renderScreen();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Invite a friend" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Add friends" }),
+    ).toBeTruthy();
+  });
+
+  it("lists friends as the main content, with a count", () => {
+    renderScreen({ ...EMPTY, friends: [1, 2, 3].map(profile) });
+
+    expect(screen.getByText("3 friends")).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Friends" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
   });
 });
