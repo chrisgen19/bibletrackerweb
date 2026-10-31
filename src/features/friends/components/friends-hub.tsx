@@ -23,7 +23,8 @@ interface FriendsHubProps {
  * across a refresh, and makes "send your link" linkable).
  */
 export function FriendsHub({ username, inviteUrl, overview }: FriendsHubProps) {
-  const [adding, setAdding] = useUrlFlag("sheet", "add");
+  // Pushed, like the day sheet: the browser's back button closes it.
+  const [adding, setAdding] = useUrlFlag("sheet", "add", { history: "push" });
   const addButton = useRef<HTMLButtonElement>(null);
   const count = overview.friends.length;
 

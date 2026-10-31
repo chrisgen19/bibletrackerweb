@@ -350,6 +350,50 @@ describe("FriendsScreen", () => {
     expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
   });
 
+  it("pushes a history entry for the sheet, and closing goes back", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+
+    await openAddSheet();
+    expect(pushState).toHaveBeenCalledWith(
+      expect.anything(),
+      "",
+      "/friends?sheet=add",
+    );
+    await userEvent.keyboard("{Escape}");
+
+    expect(back).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog", { name: "Add friends" })).toBeNull();
+    pushState.mockRestore();
+    back.mockRestore();
+  });
+
+  it("does not go back when the sheet was opened from a link", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    navigation.search = "?sheet=add";
+    window.history.replaceState(null, "", "/friends?sheet=add");
+    renderScreen();
+
+    await userEvent.keyboard("{Escape}");
+
+    // Going back would leave the app; the param is dropped in place instead.
+    expect(back).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("");
+    back.mockRestore();
+  });
+
+  it("keeps the requests banner in place, without a history entry", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    renderScreen({ ...EMPTY, incoming: [profile(1), profile(2)] });
+
+    await openRequests(2);
+
+    expect(window.location.search).toBe("?requests=open");
+    expect(pushState).not.toHaveBeenCalled();
+    pushState.mockRestore();
+  });
+
   it("opens the Add friends sheet when the URL changes while mounted", () => {
     // A fresh element each time, as a new URL re-renders the screen in the app.
     const view = () => (
