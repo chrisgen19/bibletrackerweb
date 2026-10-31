@@ -72,6 +72,8 @@ export async function searchUsernameFor(
 ): Promise<SearchResult> {
   const parsed = searchInput.safeParse(input);
   if (!parsed.success) return fail("invalid-input");
+  // Longer than any handle (and than the input allows): nobody, not an error.
+  if (parsed.data.query.length > 64) return { ok: true, match: null };
   const name = usernameSchema.safeParse(normalizeUsername(parsed.data.query));
   if (!name.success) return { ok: true, match: null };
 
@@ -88,6 +90,8 @@ async function sendTo(
 ): Promise<FriendsResult> {
   if ((await getUsername(userId)) === null) return fail("username-required");
   if (targetId === userId) return fail("self");
+  // A reader with no username is invisible to others, so a request would be a hidden row.
+  if ((await getUsername(targetId)) === null) return fail("not-found");
   const outcome = await sendFriendRequest(userId, targetId);
   switch (outcome) {
     case "requested":

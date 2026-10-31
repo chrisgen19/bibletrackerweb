@@ -22,23 +22,20 @@ import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
 /** The reader's invite link: copy, share (where the browser can) and reset. */
 export function InviteLinkPanel({ inviteUrl }: { inviteUrl: string }) {
   const { run, pending, error } = useFriendAction();
-  const [url, setUrl] = useState(inviteUrl);
   const [copyFailed, setCopyFailed] = useState(false);
 
   async function reset() {
-    const result = await run(() => resetInvite());
-    if (result === null) return;
-    // The new link, built from the old one's origin and path.
-    setUrl(`${url.slice(0, url.lastIndexOf("/") + 1)}${result.code}`);
+    // The shared action hook refreshes the page, which brings the new link as the prop.
+    await run(() => resetInvite());
   }
 
   return (
     <Panel>
       <p className="truncate rounded-lg bg-muted px-3 py-2.5 text-callout">
-        {url}
+        {inviteUrl}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <CopyShareButtons url={url} onCopyFailed={setCopyFailed} />
+        <CopyShareButtons url={inviteUrl} onCopyFailed={setCopyFailed} />
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="plain" size="medium" disabled={pending}>

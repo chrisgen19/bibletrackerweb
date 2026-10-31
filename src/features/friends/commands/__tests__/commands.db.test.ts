@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getUsername } from "@/lib/friends-dal";
+import { getRelationship, getUsername } from "@/lib/friends-dal";
 import { createTestUser } from "@/test/factories";
 
 import {
@@ -92,6 +92,17 @@ describe("searchUsernameFor", () => {
     }
   });
 
+  it("returns no match for a query longer than 64 characters", async () => {
+    expect(await searchUsernameFor(bob, { query: "a".repeat(65) })).toEqual({
+      ok: true,
+      match: null,
+    });
+    expect(await searchUsernameFor(bob, { query: 5 })).toEqual({
+      ok: false,
+      error: "invalid-input",
+    });
+  });
+
   it("marks your own handle as self", async () => {
     expect(await searchUsernameFor(alice, { query: aliceName })).toEqual({
       ok: true,
@@ -104,6 +115,14 @@ describe("searchUsernameFor", () => {
 });
 
 describe("sending requests", () => {
+  it("refuses a target with no username as not-found and creates no row", async () => {
+    expect(await sendRequestFor(alice, { userId: noName })).toEqual({
+      ok: false,
+      error: "not-found",
+    });
+    expect(await getRelationship(alice, noName)).toBe("none");
+  });
+
   it("refuses to send without a username", async () => {
     expect(await sendRequestFor(noName, { userId: alice })).toEqual({
       ok: false,

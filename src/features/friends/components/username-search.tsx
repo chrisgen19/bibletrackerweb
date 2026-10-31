@@ -59,6 +59,7 @@ export function UsernameSearch() {
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
+          maxLength={64}
           enterKeyHint="search"
           placeholder="@username"
           className="h-11 min-w-0 flex-1"

@@ -130,6 +130,11 @@ function Respond({
     return result !== null;
   }
 
+  async function sendPlain() {
+    // A dead link (reset while the page was open) re-renders as the dead-link panel.
+    if (!(await send())) router.refresh();
+  }
+
   async function sendAfterSaving() {
     // The username is saved either way: refresh so the page drops the form and a
     // retry is the plain button.
@@ -163,7 +168,7 @@ function Respond({
             size="lg"
             className="w-full"
             disabled={pending}
-            onClick={send}
+            onClick={sendPlain}
           >
             Accept request
           </Button>
@@ -175,7 +180,7 @@ function Respond({
             size="lg"
             className="w-full"
             disabled={pending}
-            onClick={send}
+            onClick={sendPlain}
           >
             Send friend request
           </Button>

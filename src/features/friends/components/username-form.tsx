@@ -19,7 +19,7 @@ interface UsernameFormProps {
   initial?: string;
   submitLabel: string;
   /** Called only after the server saved the username. */
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
   /** Adds a Cancel button, for the dialog. */
   onCancel?: () => void;
 }
@@ -57,7 +57,7 @@ export function UsernameForm({
       setFormError(friendsErrorMessage("network"));
       return;
     }
-    onSaved();
+    await onSaved();
   });
 
   return (
@@ -66,7 +66,7 @@ export function UsernameForm({
         <TextField
           id={`${id}-username`}
           label="Username"
-          autoComplete="username"
+          autoComplete="off"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}

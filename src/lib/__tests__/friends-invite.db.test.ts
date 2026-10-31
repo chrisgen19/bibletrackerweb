@@ -6,8 +6,10 @@ import {
   findInviteOwner,
   findUserByUsername,
   getOrCreateInvite,
+  getRelationship,
   getUsername,
   resetInvite,
+  sendFriendRequest,
   setUsername,
 } from "@/lib/friends-dal";
 import { createTestUser } from "@/test/factories";
@@ -39,6 +41,12 @@ describe("invite links", () => {
     const old = await getOrCreateInvite(alice);
     await resetInvite(alice);
     expect(await findInviteOwner(old)).toBeNull();
+  });
+
+  it("leaves an existing pending request in place on reset", async () => {
+    expect(await sendFriendRequest(bob, alice)).toBe("requested");
+    await resetInvite(alice);
+    expect(await getRelationship(alice, bob)).toBe("incoming");
   });
 
   it("creates the invite on reset when none exists", async () => {

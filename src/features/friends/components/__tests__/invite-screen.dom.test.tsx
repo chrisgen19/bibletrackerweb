@@ -81,6 +81,21 @@ describe("InviteScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/friends");
   });
 
+  it("refreshes instead of leaving when a plain send fails", async () => {
+    actions.sendRequestByInvite.mockResolvedValue({
+      ok: false,
+      error: "not-found",
+    });
+    renderScreen();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send friend request" }),
+    );
+
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
   it("lets a reader without a username pick one and send in one step", async () => {
     renderScreen({ viewerHasUsername: false });
     expect(

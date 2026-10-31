@@ -12,7 +12,7 @@ import { usernameSchema } from "@/features/friends/domain/username";
 export const setUsernameInput = z.object({ username: usernameSchema });
 
 /** Raw text: the command normalises it, and a malformed query just finds nobody. */
-export const searchInput = z.object({ query: z.string().max(64) });
+export const searchInput = z.object({ query: z.string() });
 
 // Not checked further: an id that matches no reader is refused as not-found.
 export const targetInput = z.object({ userId: z.string().min(1).max(64) });

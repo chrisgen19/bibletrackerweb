@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Share } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +14,8 @@ interface CopyShareButtonsProps {
 /** Copy, and Share where the browser can, for an invite link. */
 export function CopyShareButtons({ url, onCopyFailed }: CopyShareButtonsProps) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   // False on the server and during hydration, so the Share button cannot mismatch.
   const canShare = useSyncExternalStore(
     () => () => {},
@@ -26,7 +28,8 @@ export function CopyShareButtons({ url, onCopyFailed }: CopyShareButtonsProps) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       onCopyFailed(true);
     }
