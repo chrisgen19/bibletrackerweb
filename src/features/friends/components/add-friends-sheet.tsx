@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useId } from "react";
+import { useId } from "react";
 
 import { Panel } from "@/components/panel";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -19,8 +19,8 @@ interface AddFriendsSheetProps {
   username: string;
   inviteUrl: string;
   outgoing: readonly PublicHandle[];
-  /** The button that opened the sheet, which gets the focus back when it closes. */
-  returnFocusRef: RefObject<HTMLElement | null>;
+  /** Where the focus goes when the sheet closes: the control that opened it. */
+  returnFocus: () => HTMLElement | null;
 }
 
 /**
@@ -34,7 +34,7 @@ export function AddFriendsSheet({
   username,
   inviteUrl,
   outgoing,
-  returnFocusRef,
+  returnFocus,
 }: AddFriendsSheetProps) {
   const wide = useMediaQuery("(min-width: 768px)");
   const id = useId();
@@ -46,7 +46,7 @@ export function AddFriendsSheet({
         // Radix only returns focus to a SheetTrigger; this one is opened from state.
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          returnFocusRef.current?.focus();
+          returnFocus()?.focus();
         }}
         className={cn(
           "gap-0 overflow-y-auto bg-background px-5 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]",

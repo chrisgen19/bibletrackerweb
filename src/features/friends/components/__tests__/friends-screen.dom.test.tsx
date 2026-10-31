@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
@@ -411,6 +411,53 @@ describe("FriendsScreen", () => {
     rerender(view());
 
     expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
+  });
+
+  it("closes the Add friends sheet when the URL drops the param, as Back does", () => {
+    navigation.search = "?sheet=add";
+    const view = () => (
+      <FriendsScreen
+        userId="me"
+        username="ruth"
+        inviteUrl={INVITE}
+        overview={EMPTY}
+      />
+    );
+    const { rerender } = render(view());
+    expect(screen.getByRole("dialog", { name: "Add friends" })).toBeTruthy();
+
+    navigation.search = "";
+    rerender(view());
+
+    expect(screen.queryByRole("dialog", { name: "Add friends" })).toBeNull();
+  });
+
+  it("returns the focus to the empty state's button that opened the sheet", async () => {
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+    const invite = screen.getByRole("button", { name: "Invite a friend" });
+
+    invite.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Add friends" });
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(document.activeElement).toBe(invite));
+    vi.restoreAllMocks();
+  });
+
+  it("returns the focus to the header button that opened the sheet", async () => {
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderScreen();
+    const add = screen.getByRole("button", { name: "Add friends" });
+
+    add.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Add friends" });
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(document.activeElement).toBe(add));
+    vi.restoreAllMocks();
   });
 
   it("changes the username from the sheet", async () => {
