@@ -6,15 +6,26 @@ import {
 } from "@/features/friends/domain/invite-code";
 import {
   type FriendProfile,
+  type FriendReadingLookup,
   type FriendsOverview,
   MAX_FRIENDS,
   MAX_PENDING_OUTGOING,
   type PublicHandle,
   type Relationship,
 } from "@/features/friends/domain/types";
+import {
+  normalizeUsername,
+  usernameSchema,
+} from "@/features/friends/domain/username";
 import type { Prisma } from "@/generated/prisma/client";
-import { isForeignKeyViolation, isUniqueViolation } from "@/lib/dal";
+import {
+  getReadingSnapshot,
+  getTimeZone,
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from "@/lib/dal";
 import { db } from "@/lib/db";
+import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
 
 /**
  * The friends half of the data access layer: same rules as `dal.ts`. Only this module
@@ -386,4 +397,51 @@ export async function getFriendsOverview(
       a.username.localeCompare(b.username),
   );
   return { friends, incoming, outgoing };
+}
+
+/**
+ * An accepted friend's profile and reading data, looked up by username. The friendship
+ * check sits right next to the read, so a friend's readings only ever reach an accepted
+ * friend. Anything short of that (malformed or unknown username, no relationship, a
+ * pending request either way, a removed friend) is the same "not-found". Selects name,
+ * photo and username, never email.
+ *
+ * "Today" uses the friend's stored time zone (UTC until they have reported one), so the
+ * viewer sees the day the friend is living, not the viewer's.
+ */
+export async function getFriendReading(
+  viewerId: string,
+  rawUsername: string,
+  now: Date = new Date(),
+): Promise<FriendReadingLookup> {
+  const parsed = usernameSchema.safeParse(normalizeUsername(rawUsername));
+  if (!parsed.success) return { kind: "not-found" };
+
+  const row = await db.user.findUnique({
+    where: { username: parsed.data },
+    select: { id: true, username: true, name: true, image: true },
+  });
+  if (row === null || row.username === null) return { kind: "not-found" };
+  if (row.id === viewerId) return { kind: "self" };
+  if ((await getRelationship(viewerId, row.id)) !== "friends") {
+    return { kind: "not-found" };
+  }
+
+  const [snapshot, timeZone] = await Promise.all([
+    getReadingSnapshot(row.id),
+    getTimeZone(row.id),
+  ]);
+  return {
+    kind: "friend",
+    profile: {
+      userId: row.id,
+      username: row.username,
+      name: row.name,
+      image: row.image,
+    },
+    reading: {
+      snapshot,
+      today: getTodayDateKeyInZone(timeZone ?? "UTC", now),
+    },
+  };
 }
