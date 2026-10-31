@@ -25,6 +25,7 @@ import {
   getTimeZone,
   isForeignKeyViolation,
   isUniqueViolation,
+  SETTING_KEYS,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { fromDbDate, toDbDate } from "@/lib/db-date";
@@ -355,9 +356,6 @@ export async function getRelationship(
   return row.requestedById === userId ? "outgoing" : "incoming";
 }
 
-/** Same `app_setting` key `dal.ts` writes the reader's time zone under. */
-const TIME_ZONE_SETTING_KEY = "time_zone";
-
 /**
  * Whether each of `friendIds` has a reading logged on their own today. Three queries
  * however many friends there are (the list is capped at 500): their stored time zones,
@@ -377,7 +375,7 @@ async function readTodayStatuses(
 
   const [zoneRows, openPlans] = await Promise.all([
     db.appSetting.findMany({
-      where: { userId: { in: [...friendIds] }, key: TIME_ZONE_SETTING_KEY },
+      where: { userId: { in: [...friendIds] }, key: SETTING_KEYS.timeZone },
       select: { userId: true, value: true },
     }),
     db.readingPlan.findMany({
