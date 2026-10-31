@@ -12,10 +12,17 @@ import { createId } from "@/utils/id";
  *
  * Writes the user directly: in the app, Better Auth creates users (Phase 3).
  */
-export async function createTestUser(): Promise<string> {
+export async function createTestUser(
+  options: { name?: string; username?: string } = {},
+): Promise<string> {
   const id = createId();
   await db.user.create({
-    data: { id, name: "Test Reader", email: `${id}@example.test` },
+    data: {
+      id,
+      name: options.name ?? "Test Reader",
+      email: `${id}@example.test`,
+      ...(options.username === undefined ? {} : { username: options.username }),
+    },
   });
   return id;
 }
