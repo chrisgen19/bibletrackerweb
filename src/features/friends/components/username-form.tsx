@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/features/auth/components/text-field";
 import { setUsernameInput } from "@/features/friends/commands/inputs";
 import { friendsErrorMessage } from "@/features/friends/commands/results";
+import {
+  forgetMissedUsername,
+  readMissedUsername,
+} from "@/features/friends/missed-username";
 
 type Values = z.input<typeof setUsernameInput>;
 type Parsed = z.output<typeof setUsernameInput>;
@@ -108,10 +112,34 @@ export function UsernameForm({
   );
 }
 
+interface UsernameSetupProps {
+  /** The reader, to find a username they picked at sign-up that was taken. */
+  userId: string;
+}
+
 /** The first step: no username yet, so nothing else on the screen works. */
-export function UsernameSetup() {
+export function UsernameSetup({ userId }: UsernameSetupProps) {
   const router = useRouter();
+  // Read after mount: storage is browser-only, and the server render has no note.
+  const [missed, setMissed] = useState<string | null>(null);
+  useEffect(() => {
+    setMissed(readMissedUsername(userId));
+  }, [userId]);
+
   return (
-    <UsernameForm submitLabel="Continue" onSaved={() => router.refresh()} />
+    <div className="grid gap-4">
+      {missed === null ? null : (
+        <p className="text-callout text-muted-foreground">
+          @{missed} was already taken when you signed up, so pick another one.
+        </p>
+      )}
+      <UsernameForm
+        submitLabel="Continue"
+        onSaved={() => {
+          forgetMissedUsername();
+          router.refresh();
+        }}
+      />
+    </div>
   );
 }

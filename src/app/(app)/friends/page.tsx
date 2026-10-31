@@ -21,6 +21,7 @@ export default async function FriendsPage() {
   if (username === null) {
     return (
       <FriendsScreen
+        userId={user.id}
         username={null}
         inviteUrl={null}
         overview={{ friends: [], incoming: [], outgoing: [] }}
@@ -34,6 +35,7 @@ export default async function FriendsPage() {
   const inviteUrl = new URL(`/add/${code}`, env.BETTER_AUTH_URL).href;
   return (
     <FriendsScreen
+      userId={user.id}
       username={username}
       inviteUrl={inviteUrl}
       overview={overview}

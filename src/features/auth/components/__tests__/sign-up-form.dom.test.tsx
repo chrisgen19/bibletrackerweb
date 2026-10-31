@@ -17,6 +17,9 @@ vi.mock("@/lib/auth-client", async (importOriginal) => ({
   authClient: { signUp: { email: signUpEmail } },
 }));
 
+const STORAGE_KEY = "friends:missed-username";
+const SIGNED_UP = { data: { user: { id: "u1" } }, error: null };
+
 async function fillIn(confirmPassword: string, username = "") {
   render(<SignUpForm next="/" googleEnabled={false} />);
   const user = userEvent.setup({ delay: null });
@@ -38,6 +41,7 @@ describe("SignUpForm", () => {
   beforeEach(() => {
     signUpEmail.mockReset();
     setUsername.mockReset();
+    localStorage.clear();
     router.replace.mockReset();
   });
 
@@ -52,7 +56,7 @@ describe("SignUpForm", () => {
   });
 
   it("sends one name and the password, never the confirmation", async () => {
-    signUpEmail.mockResolvedValue({ data: {}, error: null });
+    signUpEmail.mockResolvedValue(SIGNED_UP);
     await fillIn("gleaning-barley");
 
     expect(signUpEmail).toHaveBeenCalledExactlyOnceWith({
@@ -64,7 +68,7 @@ describe("SignUpForm", () => {
   });
 
   it("leaves the username for the Friends screen when it is skipped", async () => {
-    signUpEmail.mockResolvedValue({ data: {}, error: null });
+    signUpEmail.mockResolvedValue(SIGNED_UP);
     await fillIn("gleaning-barley");
 
     expect(router.replace).toHaveBeenCalledWith("/");
@@ -72,7 +76,7 @@ describe("SignUpForm", () => {
   });
 
   it("saves a username once the account exists", async () => {
-    signUpEmail.mockResolvedValue({ data: {}, error: null });
+    signUpEmail.mockResolvedValue(SIGNED_UP);
     setUsername.mockResolvedValue({ ok: true });
     await fillIn("gleaning-barley", "@Ruth_M");
 
@@ -84,16 +88,33 @@ describe("SignUpForm", () => {
     expect(router.replace).toHaveBeenCalledWith("/");
   });
 
-  it("goes on when the username can't be saved", async () => {
-    signUpEmail.mockResolvedValue({ data: {}, error: null });
+  it("goes on when the username was taken, and remembers it for Friends", async () => {
+    signUpEmail.mockResolvedValue(SIGNED_UP);
     setUsername.mockResolvedValue({ ok: false, error: "username-taken" });
+    await fillIn("gleaning-barley", "Ruth");
+
+    expect(router.replace).toHaveBeenCalledWith("/");
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")).toEqual({
+      userId: "u1",
+      username: "ruth",
+    });
+  });
+
+  it("clears an old note once the username is saved", async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ userId: "u0", username: "naomi" }),
+    );
+    signUpEmail.mockResolvedValue(SIGNED_UP);
+    setUsername.mockResolvedValue({ ok: true });
     await fillIn("gleaning-barley", "ruth");
 
     expect(router.replace).toHaveBeenCalledWith("/");
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
   it("goes on when saving the username fails on the network", async () => {
-    signUpEmail.mockResolvedValue({ data: {}, error: null });
+    signUpEmail.mockResolvedValue(SIGNED_UP);
     setUsername.mockRejectedValue(new TypeError("Failed to fetch"));
     await fillIn("gleaning-barley", "ruth");
 

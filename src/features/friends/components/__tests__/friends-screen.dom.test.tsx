@@ -35,6 +35,7 @@ const profile = (n: number): FriendProfile => ({
 function renderScreen(overview: FriendsOverview = EMPTY, username = "ruth") {
   render(
     <FriendsScreen
+      userId="me"
       username={username}
       inviteUrl={INVITE}
       overview={overview}
@@ -43,6 +44,7 @@ function renderScreen(overview: FriendsOverview = EMPTY, username = "ruth") {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   for (const action of Object.values(actions)) {
     action.mockReset();
     action.mockResolvedValue({ ok: true });
@@ -51,7 +53,14 @@ beforeEach(() => {
 
 describe("FriendsScreen", () => {
   it("asks for a username before anything else", () => {
-    render(<FriendsScreen username={null} inviteUrl={null} overview={EMPTY} />);
+    render(
+      <FriendsScreen
+        userId="me"
+        username={null}
+        inviteUrl={null}
+        overview={EMPTY}
+      />,
+    );
 
     expect(screen.getByLabelText("Username")).toBeTruthy();
     expect(
@@ -60,12 +69,64 @@ describe("FriendsScreen", () => {
     expect(screen.queryByText("Your invite link")).toBeNull();
   });
 
+  it("says why it asks again when the sign-up username was taken", async () => {
+    localStorage.setItem(
+      "friends:missed-username",
+      JSON.stringify({ userId: "me", username: "ruth" }),
+    );
+    actions.setUsername.mockResolvedValue({ ok: true });
+    render(
+      <FriendsScreen
+        userId="me"
+        username={null}
+        inviteUrl={null}
+        overview={EMPTY}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "@ruth was already taken when you signed up, so pick another one.",
+      ),
+    ).toBeTruthy();
+
+    await userEvent.type(screen.getByLabelText("Username"), "ruth_m");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(router.refresh).toHaveBeenCalled();
+    expect(localStorage.getItem("friends:missed-username")).toBeNull();
+  });
+
+  it("does not show another reader's sign-up note", () => {
+    localStorage.setItem(
+      "friends:missed-username",
+      JSON.stringify({ userId: "someone-else", username: "ruth" }),
+    );
+    render(
+      <FriendsScreen
+        userId="me"
+        username={null}
+        inviteUrl={null}
+        overview={EMPTY}
+      />,
+    );
+
+    expect(screen.queryByText(/already taken when you signed up/)).toBeNull();
+  });
+
   it("shows the server's error copy when a username is taken", async () => {
     actions.setUsername.mockResolvedValue({
       ok: false,
       error: "username-taken",
     });
-    render(<FriendsScreen username={null} inviteUrl={null} overview={EMPTY} />);
+    render(
+      <FriendsScreen
+        userId="me"
+        username={null}
+        inviteUrl={null}
+        overview={EMPTY}
+      />,
+    );
 
     await userEvent.type(screen.getByLabelText("Username"), "maria");
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));

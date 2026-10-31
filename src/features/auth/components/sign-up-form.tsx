@@ -8,6 +8,10 @@ import { useForm } from "react-hook-form";
 
 import { setUsername } from "@/actions/friends";
 import { Button } from "@/components/ui/button";
+import {
+  forgetMissedUsername,
+  rememberMissedUsername,
+} from "@/features/friends/missed-username";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
@@ -30,13 +34,22 @@ interface SignUpFormProps {
 
 /**
  * Saves the username picked at sign-up. The account already exists by now, so a name that
- * was taken (or a failed request) must not block the reader: the Friends screen asks again.
+ * was taken (or a failed request) must not block the reader: the Friends screen asks again,
+ * and for a taken name it says why.
  */
-async function claimUsername(username: string): Promise<void> {
+async function claimUsername(userId: string, username: string): Promise<void> {
   try {
-    await setUsername({ username });
+    const result = await setUsername({ username });
+    if (result.ok) {
+      forgetMissedUsername();
+    } else if (
+      result.error === "username-taken" ||
+      result.error === "username-just-taken"
+    ) {
+      rememberMissedUsername({ userId, username });
+    }
   } catch {
-    // Same fallback as a taken name: picked later on Friends.
+    // Picked later on Friends, without a note: nothing says the name was taken.
   }
 }
 
@@ -55,7 +68,7 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
     setFormError(null);
     // Signing up also signs in, so the reader goes straight on. Only what Better Auth
     // stores is sent: one name, and never the confirmation.
-    const { error } = await catchNetworkFailure(() =>
+    const { data, error } = await catchNetworkFailure(() =>
       authClient.signUp.email({
         name: fullName(values),
         email: values.email,
@@ -66,7 +79,9 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
       setFormError(authErrorMessage(error));
       return;
     }
-    if (values.username !== undefined) await claimUsername(values.username);
+    if (values.username !== undefined && data) {
+      await claimUsername(data.user.id, values.username);
+    }
     router.replace(next);
     router.refresh();
   });

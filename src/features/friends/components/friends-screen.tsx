@@ -10,6 +10,7 @@ import { UsernameHeader } from "./username-header";
 import { UsernameSearch } from "./username-search";
 
 interface FriendsScreenProps {
+  userId: string;
   /** `null` until the reader picks one, which is the only thing the screen asks first. */
   username: string | null;
   inviteUrl: string | null;
@@ -18,6 +19,7 @@ interface FriendsScreenProps {
 
 /** Reading with friends: invite, find, answer requests, and the friends themselves. */
 export function FriendsScreen({
+  userId,
   username,
   inviteUrl,
   overview,
@@ -29,7 +31,7 @@ export function FriendsScreen({
         <section className="mt-6">
           <SectionHeader title="Pick a username" />
           <Panel>
-            <UsernameSetup />
+            <UsernameSetup userId={userId} />
           </Panel>
         </section>
       </main>
