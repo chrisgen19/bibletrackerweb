@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { resetInvite } from "@/actions/friends";
 import { Panel } from "@/components/panel";
@@ -19,8 +19,14 @@ import { Button } from "@/components/ui/button";
 import { CopyShareButtons } from "@/features/friends/components/copy-share-buttons";
 import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
 
+interface InviteLinkPanelProps {
+  inviteUrl: string;
+  /** Shown above the link inside the same panel, e.g. the reader's own username. */
+  header?: ReactNode;
+}
+
 /** The reader's invite link: copy, share (where the browser can) and reset. */
-export function InviteLinkPanel({ inviteUrl }: { inviteUrl: string }) {
+export function InviteLinkPanel({ inviteUrl, header }: InviteLinkPanelProps) {
   const { run, pending, error } = useFriendAction();
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -31,6 +37,7 @@ export function InviteLinkPanel({ inviteUrl }: { inviteUrl: string }) {
 
   return (
     <Panel>
+      {header}
       <p className="truncate rounded-lg bg-muted px-3 py-2.5 text-callout">
         {inviteUrl}
       </p>

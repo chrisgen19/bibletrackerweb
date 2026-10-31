@@ -5,46 +5,29 @@ import {
   cancelRequest,
   declineRequest,
 } from "@/actions/friends";
-import { Panel } from "@/components/panel";
-import { SectionHeader } from "@/components/section-header";
 import { Button } from "@/components/ui/button";
-import {
-  DECLINE_ALL_THRESHOLD,
-  type FriendProfile,
-  type PublicHandle,
+import type {
+  FriendProfile,
+  PublicHandle,
 } from "@/features/friends/domain/types";
 import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
 
-import { DeclineAllButton } from "./decline-all-button";
 import { PersonRow } from "./person-row";
 
-/** Incoming requests. Renders nothing when there are none. */
-export function IncomingRequests({
+/** Incoming requests as rows with Accept and Decline. The caller frames the list. */
+export function IncomingRequestList({
   incoming,
 }: {
   incoming: readonly FriendProfile[];
 }) {
-  if (incoming.length === 0) return null;
   return (
-    <section>
-      <SectionHeader
-        title="Requests"
-        accessory={
-          incoming.length > DECLINE_ALL_THRESHOLD ? (
-            <DeclineAllButton count={incoming.length} />
-          ) : undefined
-        }
-      />
-      <Panel padded={false}>
-        <ul className="divide-y">
-          {incoming.map((person) => (
-            <li key={person.userId}>
-              <IncomingRow person={person} />
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    </section>
+    <ul className="divide-y">
+      {incoming.map((person) => (
+        <li key={person.userId}>
+          <IncomingRow person={person} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -57,6 +40,7 @@ function IncomingRow({ person }: { person: FriendProfile }) {
       name={person.name}
       image={person.image}
       error={error}
+      stackActions
     >
       <Button
         size="lg"
@@ -79,26 +63,20 @@ function IncomingRow({ person }: { person: FriendProfile }) {
   );
 }
 
-/** Requests the reader sent, as handles only. Renders nothing when there are none. */
-export function SentRequests({
+/** Requests the reader sent, as handles only, each with Cancel. The caller frames the list. */
+export function SentRequestList({
   outgoing,
 }: {
   outgoing: readonly PublicHandle[];
 }) {
-  if (outgoing.length === 0) return null;
   return (
-    <section>
-      <SectionHeader title="Sent" />
-      <Panel padded={false}>
-        <ul className="divide-y">
-          {outgoing.map((handle) => (
-            <li key={handle.userId}>
-              <SentRow handle={handle} />
-            </li>
-          ))}
-        </ul>
-      </Panel>
-    </section>
+    <ul className="divide-y">
+      {outgoing.map((handle) => (
+        <li key={handle.userId}>
+          <SentRow handle={handle} />
+        </li>
+      ))}
+    </ul>
   );
 }
 

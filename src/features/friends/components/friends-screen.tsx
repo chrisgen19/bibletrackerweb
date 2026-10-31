@@ -1,13 +1,8 @@
 import { Panel } from "@/components/panel";
-import { SectionHeader } from "@/components/section-header";
 import type { FriendsOverview } from "@/features/friends/domain/types";
 
-import { FriendList } from "./friend-list";
-import { InviteLinkPanel } from "./invite-link-panel";
-import { IncomingRequests, SentRequests } from "./request-lists";
+import { FriendsHub } from "./friends-hub";
 import { UsernameSetup } from "./username-form";
-import { UsernameHeader } from "./username-header";
-import { UsernameSearch } from "./username-search";
 
 interface FriendsScreenProps {
   userId: string;
@@ -17,7 +12,7 @@ interface FriendsScreenProps {
   overview: FriendsOverview;
 }
 
-/** Reading with friends: invite, find, answer requests, and the friends themselves. */
+/** Reading with friends: a username first, then the friends hub. */
 export function FriendsScreen({
   userId,
   username,
@@ -28,29 +23,16 @@ export function FriendsScreen({
     return (
       <main className="mx-auto w-full max-w-lg px-5 pt-6 pb-tab-bar">
         <h1 className="text-large-title">Friends</h1>
-        <section className="mt-6">
-          <SectionHeader title="Pick a username" />
-          <Panel>
-            <UsernameSetup userId={userId} />
-          </Panel>
-        </section>
+        <p className="mt-1 text-callout text-muted-foreground">
+          Pick a username so friends can find you. You can change it later.
+        </p>
+        <Panel className="mt-6">
+          <UsernameSetup userId={userId} />
+        </Panel>
       </main>
     );
   }
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-col gap-6 px-5 pt-6 pb-tab-bar">
-      <UsernameHeader username={username} />
-      <section>
-        <SectionHeader title="Your invite link" />
-        <InviteLinkPanel inviteUrl={inviteUrl} />
-      </section>
-      <section>
-        <SectionHeader title="Find by username" />
-        <UsernameSearch />
-      </section>
-      <IncomingRequests incoming={overview.incoming} />
-      <SentRequests outgoing={overview.outgoing} />
-      <FriendList friends={overview.friends} />
-    </main>
+    <FriendsHub username={username} inviteUrl={inviteUrl} overview={overview} />
   );
 }

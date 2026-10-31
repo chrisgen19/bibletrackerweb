@@ -33,10 +33,11 @@ export const router = {
   prefetch: vi.fn(),
 };
 // The current route, for components that read it. Tests set it before rendering.
-export const navigation = { pathname: "/" };
+export const navigation = { pathname: "/", search: "" };
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(navigation.search),
 }));
 
 // A plain anchor: these tests check where a link points, not how Next navigates.

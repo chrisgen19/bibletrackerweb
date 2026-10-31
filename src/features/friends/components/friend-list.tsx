@@ -6,7 +6,6 @@ import { useState } from "react";
 import { removeFriend } from "@/actions/friends";
 import { EmptyState } from "@/components/empty-state";
 import { Panel } from "@/components/panel";
-import { SectionHeader } from "@/components/section-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,30 +28,36 @@ import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
 
 import { PersonRow } from "./person-row";
 
-/** Friends, with an empty state that says how to find some. */
-export function FriendList({ friends }: { friends: readonly FriendProfile[] }) {
-  return (
-    <section>
-      <SectionHeader title="Friends" />
-      <Panel padded={friends.length > 0 ? false : undefined}>
-        {friends.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No friends yet"
-            description="Share your invite link or search for a username."
-            compact
-          />
-        ) : (
-          <ul className="divide-y">
-            {friends.map((friend) => (
-              <li key={friend.userId}>
-                <FriendRow friend={friend} />
-              </li>
-            ))}
-          </ul>
-        )}
+interface FriendListProps {
+  friends: readonly FriendProfile[];
+  /** Opens the Add friends sheet, from the empty state. */
+  onAdd: () => void;
+}
+
+/** The friends themselves, the screen's main content, with an empty state that starts adding. */
+export function FriendList({ friends, onAdd }: FriendListProps) {
+  if (friends.length === 0) {
+    return (
+      <Panel padded={false}>
+        <EmptyState
+          icon={Users}
+          title="No friends yet"
+          description="Send someone your invite link, or look them up by username, and you can read together."
+          action={{ label: "Invite a friend", onClick: onAdd }}
+        />
       </Panel>
-    </section>
+    );
+  }
+  return (
+    <Panel padded={false}>
+      <ul aria-label="Friends" className="divide-y">
+        {friends.map((friend) => (
+          <li key={friend.userId}>
+            <FriendRow friend={friend} />
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
