@@ -15,6 +15,7 @@ const lookup = vi.mocked(getFriendReading);
 async function renderSheet() {
   const page = await InterceptedFriendDay({
     params: Promise.resolve({ username: "maria", date: "2026-10-28" }),
+    searchParams: Promise.resolve({}),
   });
   return render(
     <QueryClientProvider client={new QueryClient()}>
