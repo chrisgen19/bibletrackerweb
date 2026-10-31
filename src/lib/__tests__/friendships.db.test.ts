@@ -25,10 +25,11 @@ import { createId } from "@/utils/id";
 const uniqueName = (prefix: string) =>
   `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
 
+const involving = (userId: string) => ({
+  OR: [{ userAId: userId }, { userBId: userId }],
+});
 const pairCount = (userId: string) =>
-  db.friendship.count({
-    where: { OR: [{ userAId: userId }, { userBId: userId }] },
-  });
+  db.friendship.count({ where: involving(userId) });
 
 let alice: string;
 let bob: string;
@@ -178,6 +179,34 @@ describe("responding to requests", () => {
     // A crossed request counts as an accept.
     expect(await sendFriendRequest(dave, carol)).toBe("friend-limit");
     expect(await getRelationship(dave, carol)).toBe("incoming");
+  });
+
+  it("never fails when a cancel races an accept", async () => {
+    for (let i = 0; i < 10; i++) {
+      await sendFriendRequest(alice, bob);
+      const results = await Promise.allSettled([
+        cancelFriendRequest(alice, bob),
+        acceptFriendRequest(bob, alice),
+      ]);
+      expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+      const rows = await db.friendship.findMany({ where: involving(alice) });
+      expect(rows.length <= 1).toBe(true);
+      if (rows[0]) expect(rows[0].status).toBe("accepted");
+      await db.friendship.deleteMany({ where: involving(alice) });
+    }
+  });
+
+  it("never fails when decline-all races a crossed send", async () => {
+    for (let i = 0; i < 10; i++) {
+      await sendFriendRequest(alice, bob);
+      const results = await Promise.allSettled([
+        declineAllFriendRequests(bob),
+        sendFriendRequest(bob, alice),
+      ]);
+      expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+      expect((await pairCount(alice)) <= 1).toBe(true);
+      await db.friendship.deleteMany({ where: involving(alice) });
+    }
   });
 
   it("declines all incoming at once and leaves outgoing alone", async () => {

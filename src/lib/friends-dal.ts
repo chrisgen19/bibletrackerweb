@@ -156,13 +156,20 @@ async function withPairLocked<T>(
   otherUserId: string,
   work: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
-  const [first, second] = [userId, otherUserId].sort();
+  const [first, second] =
+    userId < otherUserId ? [userId, otherUserId] : [otherUserId, userId];
   return db.$transaction(async (tx) => {
-    for (const id of [first, second]) {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`friends:${id}`}, 0))`;
-    }
+    await lockFriendsOf(tx, first);
+    await lockFriendsOf(tx, second);
     return work(tx);
   });
+}
+
+async function lockFriendsOf(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`friends:${userId}`}, 0))`;
 }
 
 async function countFriends(
@@ -187,6 +194,22 @@ async function eitherAtFriendLimit(
 }
 
 /**
+ * Accepts a pending row only if it is still pending and still from `requesterId`. The
+ * locks already prevent a concurrent change; the guard means a surprise shows up as a
+ * zero count ("not-found") rather than a thrown P2025.
+ */
+function markAccepted(
+  tx: Prisma.TransactionClient,
+  id: string,
+  requesterId: string,
+) {
+  return tx.friendship.updateMany({
+    where: { id, status: "pending", requestedById: requesterId },
+    data: { status: "accepted", acceptedAt: new Date() },
+  });
+}
+
+/**
  * Asks `otherUserId` to be friends, following the spec's state table: a request the
  * other side already made becomes a friendship, a repeat reports the current state.
  * Callers never pass the same id twice. A missing other user comes back as "not-found".
@@ -207,11 +230,8 @@ export async function sendFriendRequest(
         if (await eitherAtFriendLimit(tx, userId, otherUserId)) {
           return "friend-limit";
         }
-        await tx.friendship.update({
-          where: { id: row.id },
-          data: { status: "accepted", acceptedAt: new Date() },
-        });
-        return "accepted";
+        const { count } = await markAccepted(tx, row.id, otherUserId);
+        return count > 0 ? "accepted" : "not-found";
       }
       const pending = await tx.friendship.count({
         where: { requestedById: userId, status: "pending" },
@@ -240,24 +260,23 @@ export async function acceptFriendRequest(
     if (await eitherAtFriendLimit(tx, userId, otherUserId)) {
       return "friend-limit";
     }
-    await tx.friendship.update({
-      where: { id: row.id },
-      data: { status: "accepted", acceptedAt: new Date() },
-    });
-    return "accepted";
+    const { count } = await markAccepted(tx, row.id, otherUserId);
+    return count > 0 ? "accepted" : "not-found";
   });
 }
 
-/** Deletes the row only when it matches the given role checks; true when it did. */
+/** Deletes the row only when it matches the given role checks, under the pair locks; true when it did. */
 async function deleteMatching(
   userId: string,
   otherUserId: string,
   where: Prisma.FriendshipWhereInput,
 ): Promise<boolean> {
-  const { count } = await db.friendship.deleteMany({
-    where: { ...orderPair(userId, otherUserId), ...where },
+  return withPairLocked(userId, otherUserId, async (tx) => {
+    const { count } = await tx.friendship.deleteMany({
+      where: { ...orderPair(userId, otherUserId), ...where },
+    });
+    return count > 0;
   });
-  return count > 0;
 }
 
 /** The receiver turns down a pending request; the row is deleted. */
@@ -294,14 +313,18 @@ export function removeFriend(
 export async function declineAllFriendRequests(
   userId: string,
 ): Promise<number> {
-  const { count } = await db.friendship.deleteMany({
-    where: {
-      ...involving(userId),
-      status: "pending",
-      requestedById: { not: userId },
-    },
+  // Every send or accept involving this reader takes their lock, so this serialises.
+  return db.$transaction(async (tx) => {
+    await lockFriendsOf(tx, userId);
+    const { count } = await tx.friendship.deleteMany({
+      where: {
+        ...involving(userId),
+        status: "pending",
+        requestedById: { not: userId },
+      },
+    });
+    return count;
   });
-  return count;
 }
 
 export async function getRelationship(
@@ -357,8 +380,10 @@ export async function getFriendsOverview(
       outgoing.push({ userId: other.id, username: other.username });
     } else incoming.push(profile);
   }
-  friends.sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  friends.sort(
+    (a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
+      a.username.localeCompare(b.username),
   );
   return { friends, incoming, outgoing };
 }
