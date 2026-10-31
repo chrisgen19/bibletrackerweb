@@ -5,12 +5,14 @@ import {
   isInviteCode,
 } from "@/features/friends/domain/invite-code";
 import {
+  type FriendListEntry,
   type FriendProfile,
   type FriendReadingLookup,
   type FriendsOverview,
   MAX_FRIENDS,
   MAX_PENDING_OUTGOING,
   type PublicHandle,
+  type ReadTodayStatus,
   type Relationship,
 } from "@/features/friends/domain/types";
 import {
@@ -25,7 +27,8 @@ import {
   isUniqueViolation,
 } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
+import { fromDbDate, toDbDate } from "@/lib/db-date";
+import { getTodayDateKeyInZone, isValidTimeZone } from "@/utils/zoned-date-key";
 
 /**
  * The friends half of the data access layer: same rules as `dal.ts`. Only this module
@@ -352,12 +355,82 @@ export async function getRelationship(
   return row.requestedById === userId ? "outgoing" : "incoming";
 }
 
+/** Same `app_setting` key `dal.ts` writes the reader's time zone under. */
+const TIME_ZONE_SETTING_KEY = "time_zone";
+
+/**
+ * Whether each of `friendIds` has a reading logged on their own today. Three queries
+ * however many friends there are (the list is capped at 500): their stored time zones,
+ * their open plans, and the completions that fall on any of their todays. Each row is
+ * then matched to its friend's own today in memory, so a friend in Kiritimati and one in
+ * Pago Pago are judged on different days from the same completions query.
+ *
+ * A friend with no open plan is "no-plan" whatever they have logged. Any completion
+ * counts, extras included, the same as the streak does.
+ */
+async function readTodayStatuses(
+  friendIds: readonly string[],
+  now: Date,
+): Promise<Map<string, ReadTodayStatus>> {
+  const statuses = new Map<string, ReadTodayStatus>();
+  if (friendIds.length === 0) return statuses;
+
+  const [zoneRows, openPlans] = await Promise.all([
+    db.appSetting.findMany({
+      where: { userId: { in: [...friendIds] }, key: TIME_ZONE_SETTING_KEY },
+      select: { userId: true, value: true },
+    }),
+    db.readingPlan.findMany({
+      where: { userId: { in: [...friendIds] }, isActive: true, endDate: null },
+      select: { userId: true },
+    }),
+  ]);
+
+  const zones = new Map(zoneRows.map((row) => [row.userId, row.value]));
+  const todays = new Map<string, string>();
+  for (const id of friendIds) {
+    const zone = zones.get(id);
+    todays.set(
+      id,
+      getTodayDateKeyInZone(
+        zone !== undefined && isValidTimeZone(zone) ? zone : "UTC",
+        now,
+      ),
+    );
+  }
+
+  const withPlan = new Set(openPlans.map((plan) => plan.userId));
+  const completions = await db.readingCompletion.findMany({
+    where: {
+      userId: { in: [...friendIds] },
+      localDate: { in: [...new Set(todays.values())].map(toDbDate) },
+    },
+    select: { userId: true, localDate: true },
+  });
+  const readToday = new Set(
+    completions
+      .filter((row) => fromDbDate(row.localDate) === todays.get(row.userId))
+      .map((row) => row.userId),
+  );
+
+  for (const id of friendIds) {
+    statuses.set(
+      id,
+      !withPlan.has(id) ? "no-plan" : readToday.has(id) ? "read" : "not-yet",
+    );
+  }
+  return statuses;
+}
+
 /**
  * Friends, incoming and outgoing requests for the Friends screen. Selects name, photo
- * and username of the other person, never email; outgoing carries the handle only.
+ * and username of the other person, never email; outgoing carries the handle only. Each
+ * friend also carries whether they have read today in their own time zone (`now` is
+ * injectable for tests).
  */
 export async function getFriendsOverview(
   userId: string,
+  now: Date = new Date(),
 ): Promise<FriendsOverview> {
   const otherSelect = {
     select: { id: true, username: true, name: true, image: true },
@@ -374,7 +447,7 @@ export async function getFriendsOverview(
     },
   });
 
-  const friends: FriendProfile[] = [];
+  const friendProfiles: FriendProfile[] = [];
   const incoming: FriendProfile[] = [];
   const outgoing: PublicHandle[] = [];
   for (const row of rows) {
@@ -386,16 +459,24 @@ export async function getFriendsOverview(
       name: other.name,
       image: other.image,
     };
-    if (row.status === "accepted") friends.push(profile);
+    if (row.status === "accepted") friendProfiles.push(profile);
     else if (row.requestedById === userId) {
       outgoing.push({ userId: other.id, username: other.username });
     } else incoming.push(profile);
   }
-  friends.sort(
+  friendProfiles.sort(
     (a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
       a.username.localeCompare(b.username),
   );
+  const statuses = await readTodayStatuses(
+    friendProfiles.map((friend) => friend.userId),
+    now,
+  );
+  const friends: FriendListEntry[] = friendProfiles.map((friend) => ({
+    ...friend,
+    readToday: statuses.get(friend.userId) ?? "no-plan",
+  }));
   return { friends, incoming, outgoing };
 }
 

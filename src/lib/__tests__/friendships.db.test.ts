@@ -261,6 +261,7 @@ describe("overview", () => {
     expect(Object.keys(overview.friends[0] ?? {}).sort()).toEqual([
       "image",
       "name",
+      "readToday",
       "userId",
       "username",
     ]);

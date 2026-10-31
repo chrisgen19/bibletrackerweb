@@ -24,9 +24,20 @@ export type Relationship =
   | "outgoing"
   | "incoming";
 
+/**
+ * Whether a friend has logged a reading on their own today (their time zone, not the
+ * viewer's). "no-plan" is a friend with no active reading plan, who has nothing to read.
+ */
+export type ReadTodayStatus = "read" | "not-yet" | "no-plan";
+
+/** A friend on the Friends list, with their read-today status. */
+export interface FriendListEntry extends FriendProfile {
+  readonly readToday: ReadTodayStatus;
+}
+
 export interface FriendsOverview {
   /** Sorted by name, case-insensitive. */
-  readonly friends: readonly FriendProfile[];
+  readonly friends: readonly FriendListEntry[];
   /** Newest first. */
   readonly incoming: readonly FriendProfile[];
   /** Newest first. */

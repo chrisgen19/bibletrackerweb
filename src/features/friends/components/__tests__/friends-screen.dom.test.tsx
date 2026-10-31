@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
-  FriendProfile,
+  FriendListEntry,
   FriendsOverview,
 } from "@/features/friends/domain/types";
 import { navigation, router } from "@/test/dom-setup";
@@ -25,11 +25,12 @@ vi.mock("@/actions/friends", () => actions);
 const EMPTY: FriendsOverview = { friends: [], incoming: [], outgoing: [] };
 const INVITE = "https://example.test/add/abc123";
 
-const profile = (n: number): FriendProfile => ({
+const profile = (n: number): FriendListEntry => ({
   userId: `u${n}`,
   username: `reader${n}`,
   name: `Reader ${n}`,
   image: null,
+  readToday: "not-yet",
 });
 
 function renderScreen(overview: FriendsOverview = EMPTY, username = "ruth") {
