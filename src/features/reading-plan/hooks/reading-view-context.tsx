@@ -2,7 +2,10 @@
 
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 
-import type { ReadingView } from "@/features/reading-plan/domain/reading-view";
+import type {
+  ReadingPerspective,
+  ReadingView,
+} from "@/features/reading-plan/domain/reading-view";
 import type { DateKey } from "@/utils/date-key";
 
 type DayHref = (date: DateKey) => string;
@@ -12,6 +15,7 @@ const defaultDayHref: DayHref = (date) => `/day/${date}`;
 interface ReadingViewContextValue {
   view: ReadingView;
   dayHref: DayHref;
+  perspective: ReadingPerspective;
 }
 
 const ReadingViewContext = createContext<ReadingViewContextValue | null>(null);
@@ -20,6 +24,8 @@ interface ReadingViewProviderProps {
   view: ReadingView;
   /** Where a day links to. Defaults to the reader's own day page. */
   dayHref?: DayHref;
+  /** Whose reading this is, for copy. Defaults to the reader's own. */
+  perspective?: ReadingPerspective;
   children: ReactNode;
 }
 
@@ -31,9 +37,13 @@ interface ReadingViewProviderProps {
 export function ReadingViewProvider({
   view,
   dayHref = defaultDayHref,
+  perspective = "self",
   children,
 }: ReadingViewProviderProps) {
-  const value = useMemo(() => ({ view, dayHref }), [view, dayHref]);
+  const value = useMemo(
+    () => ({ view, dayHref, perspective }),
+    [view, dayHref, perspective],
+  );
   return (
     <ReadingViewContext.Provider value={value}>
       {children}
@@ -57,4 +67,12 @@ export function useReadingView(): ReadingView {
  */
 export function useDayHref(): DayHref {
   return useContext(ReadingViewContext)?.dayHref ?? defaultDayHref;
+}
+
+/**
+ * Whether copy should speak to the reader or about a friend. `"self"` outside a provider,
+ * so a component that only words a label needs no view.
+ */
+export function useReadingPerspective(): ReadingPerspective {
+  return useContext(ReadingViewContext)?.perspective ?? "self";
 }

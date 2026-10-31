@@ -89,3 +89,9 @@ export function deriveReadingView(
     today,
   };
 }
+
+/**
+ * Whose reading the screens show. Copy that speaks to the reader ("your plan") reads as the
+ * viewer's own data on a friend's profile, so it switches to the third person there.
+ */
+export type ReadingPerspective = "self" | "friend";

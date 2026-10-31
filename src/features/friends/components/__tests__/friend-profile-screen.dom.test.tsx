@@ -38,6 +38,19 @@ const NO_PLAN: FriendReading = {
   today: "2026-10-31",
 };
 
+const NO_READINGS: FriendReading = {
+  snapshot: { plans: [PLAN], activePlan: PLAN, completions: [] },
+  today: "2026-10-31",
+};
+
+/** Every piece of text a reader or a screen reader meets: visible text and aria-labels. */
+function allCopy(): string[] {
+  const labels = Array.from(document.querySelectorAll("[aria-label]")).map(
+    (element) => element.getAttribute("aria-label") ?? "",
+  );
+  return [document.body.textContent ?? "", ...labels];
+}
+
 function renderProfile(initial: FriendReading = READING) {
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -135,5 +148,36 @@ describe("FriendProfileScreen", () => {
     expect(
       screen.queryByRole("heading", { name: "Reading journal" }),
     ).toBeNull();
+  });
+
+  describe("wording", () => {
+    const SPEAKS_TO_VIEWER = /\byou(r)?\b/i;
+
+    it("never says you or your about a friend with a plan and no readings", () => {
+      renderProfile(NO_READINGS);
+
+      expect(
+        screen.getByText(
+          "Every day they read will gather here, with what they read.",
+        ),
+      ).toBeTruthy();
+      for (const copy of allCopy()) {
+        expect(copy).not.toMatch(SPEAKS_TO_VIEWER);
+      }
+    });
+
+    it("never says you or your in a month before the friend's plan began", () => {
+      renderProfile();
+
+      fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+
+      expect(
+        screen.getByRole("heading", { level: 2, name: "September 2026" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Before the plan began")).toBeTruthy();
+      for (const copy of allCopy()) {
+        expect(copy).not.toMatch(SPEAKS_TO_VIEWER);
+      }
+    });
   });
 });

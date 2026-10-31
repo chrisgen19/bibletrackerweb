@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import type { ReactNode } from "react";
 
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 import { cn } from "@/lib/utils";
 
 import {
@@ -32,6 +33,8 @@ export function HeatmapMonthLabels({
   shownMonth,
   onPickMonth,
 }: HeatmapMonthLabelsProps) {
+  const journal =
+    useReadingPerspective() === "friend" ? "the journal" : "your journal";
   const cells: ReactNode[] = [];
   let column = 0;
   for (const month of months) {
@@ -49,7 +52,7 @@ export function HeatmapMonthLabels({
         <button
           type="button"
           onClick={() => onPickMonth(month.key)}
-          aria-label={`Show ${format(monthKeyToDate(month.key), "MMMM yyyy")} in your journal`}
+          aria-label={`Show ${format(monthKeyToDate(month.key), "MMMM yyyy")} in ${journal}`}
           className={cn(
             "flex h-10 w-full items-end rounded-sm pb-1 text-footnote outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             shown

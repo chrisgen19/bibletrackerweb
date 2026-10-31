@@ -3,7 +3,11 @@
 // "never the danger colour" holds by construction: no role names it.
 import type { DayReading } from "@/features/reading-plan/domain/types";
 
-import { describeDay, getDayAppearance } from "../day-appearance";
+import {
+  describeDay,
+  describeHeatCell,
+  getDayAppearance,
+} from "../day-appearance";
 
 const OPTIONS = { isToday: false, inCurrentMonth: true };
 
@@ -83,5 +87,39 @@ describe("describeDay", () => {
         false,
       ),
     ).toBe("Monday 24 August, before your plan began");
+  });
+});
+
+describe("copy for a friend's reading", () => {
+  const beforePlan: DayReading = {
+    date: "2026-08-24",
+    status: "before-plan",
+    scheduled: { kind: "before-plan" },
+    completedChapters: [],
+    plan: null,
+  };
+
+  it("says the plan had not begun, not whose plan", () => {
+    expect(describeDay(beforePlan, false, "friend")).toBe(
+      "Monday 24 August, before the plan began",
+    );
+    expect(describeDay(beforePlan, false, "self")).toBe(
+      "Monday 24 August, before your plan began",
+    );
+  });
+
+  it("does the same for a heatmap cell outside the plan", () => {
+    const cell = {
+      date: "2026-08-24",
+      state: "outside",
+      level: 0,
+      summary: null,
+    } as const;
+    expect(describeHeatCell(cell, false)).toBe(
+      "Monday 24 August, before your plan began",
+    );
+    expect(describeHeatCell(cell, false, "friend")).toBe(
+      "Monday 24 August, before the plan began",
+    );
   });
 });

@@ -2,6 +2,7 @@ import { format } from "date-fns";
 
 import type { BibleReference, VerseRange } from "@/data/bible/canon";
 import type { CanonIndex } from "@/data/bible/canon-index";
+import type { ReadingPerspective } from "@/features/reading-plan/domain/reading-view";
 import {
   formatReference,
   formatReferenceSpan,
@@ -360,12 +361,16 @@ export function summariseRecentReading({
  * A week with no reading says nothing about it: the summary encourages, it never tallies
  * what was missed.
  */
-export function describeRecentReading(recent: RecentReading): string | null {
+export function describeRecentReading(
+  recent: RecentReading,
+  perspective: ReadingPerspective = "self",
+): string | null {
   const parts: string[] = [];
   if (recent.readDays > 0) {
+    const began = perspective === "friend" ? "starting" : "you began";
     parts.push(
       recent.windowDays < DAYS_PER_WEEK
-        ? `${recent.readDays} of ${recent.windowDays} ${recent.windowDays === 1 ? "day" : "days"} since you began.`
+        ? `${recent.readDays} of ${recent.windowDays} ${recent.windowDays === 1 ? "day" : "days"} since ${began}.`
         : `${recent.readDays} of the last ${recent.windowDays} days.`,
     );
   }

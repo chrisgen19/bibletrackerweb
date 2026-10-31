@@ -223,6 +223,24 @@ describe("recent reading", () => {
     ).toBe(1);
   });
 
+  it("words a first week in the third person for a friend", () => {
+    const recent = { readDays: 2, windowDays: 3, chaptersThisMonth: 0 };
+
+    expect(describeRecentReading(recent)).toBe("2 of 3 days since you began.");
+    expect(describeRecentReading(recent, "self")).toBe(
+      "2 of 3 days since you began.",
+    );
+    expect(describeRecentReading(recent, "friend")).toBe(
+      "2 of 3 days since starting.",
+    );
+    expect(
+      describeRecentReading(
+        { readDays: 1, windowDays: 1, chaptersThisMonth: 0 },
+        "friend",
+      ),
+    ).toBe("1 of 1 day since starting.");
+  });
+
   it("says nothing about a week without reading", () => {
     expect(
       describeRecentReading({

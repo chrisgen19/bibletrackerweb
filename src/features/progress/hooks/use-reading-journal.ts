@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 
 import { DEFAULT_CANON_ID, getCanonIndex } from "@/data/bible/canon-index";
 import { getEarliestPlanStart } from "@/features/reading-plan/domain/schedule";
-import { useReadingView } from "@/features/reading-plan/hooks/reading-view-context";
+import {
+  useReadingPerspective,
+  useReadingView,
+} from "@/features/reading-plan/hooks/reading-view-context";
 import {
   addDaysToDateKey,
   compareDateKeys,
@@ -31,6 +34,7 @@ export function useRecentReadingSummary(): string | null {
     scheduleContext,
     today,
   } = useReadingView();
+  const perspective = useReadingPerspective();
 
   return useMemo(
     () =>
@@ -43,8 +47,17 @@ export function useRecentReadingSummary(): string | null {
           today,
           index: getCanonIndex(activePlan?.canonId ?? DEFAULT_CANON_ID),
         }),
+        perspective,
       ),
-    [plans, activePlan, completions, completionLookup, scheduleContext, today],
+    [
+      plans,
+      activePlan,
+      completions,
+      completionLookup,
+      scheduleContext,
+      today,
+      perspective,
+    ],
   );
 }
 

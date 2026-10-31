@@ -3,6 +3,7 @@
 import type { Ref } from "react";
 
 import { Panel } from "@/components/panel";
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 import type { DateKey } from "@/utils/date-key";
 
 import type { ReadingJournalState } from "../hooks/use-reading-journal";
@@ -30,6 +31,7 @@ export function ReadingJournal({
   className,
 }: ReadingJournalProps) {
   const { weeks, summary, canShowEarlier, showEarlier, today } = journal;
+  const perspective = useReadingPerspective();
 
   return (
     <section aria-labelledby="journal-heading" className={className}>
@@ -40,7 +42,9 @@ export function ReadingJournal({
           </h2>
           <p className="mt-1 text-callout text-muted-foreground">
             {summary ??
-              "Every day you read will gather here, with what you read."}
+              (perspective === "friend"
+                ? "Every day they read will gather here, with what they read."
+                : "Every day you read will gather here, with what you read.")}
           </p>
         </div>
 

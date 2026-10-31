@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-
+import type { ReadingPerspective } from "@/features/reading-plan/domain/reading-view";
 import { formatReferenceSpan } from "@/features/reading-plan/domain/reference";
 import type {
   DayReading,
@@ -73,8 +73,22 @@ const STATUS_DESCRIPTION: Record<ReadingStatus, string> = {
   "no-plan": "no reading scheduled",
 };
 
+/** What a screen reader says for a day, in the reader's voice or about a friend. */
+function statusDescription(
+  status: ReadingStatus,
+  perspective: ReadingPerspective,
+): string {
+  return status === "before-plan" && perspective === "friend"
+    ? "before the plan began"
+    : STATUS_DESCRIPTION[status];
+}
+
 /** "Monday 24 August, Genesis 24, completed" */
-export function describeDay(day: DayReading, isToday: boolean): string {
+export function describeDay(
+  day: DayReading,
+  isToday: boolean,
+  perspective: ReadingPerspective = "self",
+): string {
   const datePart = format(fromDateKey(day.date), "EEEE d MMMM");
   const prefix = isToday ? `Today, ${datePart}` : datePart;
 
@@ -83,7 +97,7 @@ export function describeDay(day: DayReading, isToday: boolean): string {
       ? formatReferenceSpan(day.scheduled.chapters)
       : null;
 
-  return [prefix, reference, STATUS_DESCRIPTION[day.status]]
+  return [prefix, reference, statusDescription(day.status, perspective)]
     .filter((part) => part !== null)
     .join(", ");
 }
@@ -96,14 +110,20 @@ const HEAT_STATE_DESCRIPTION: Record<HeatCell["state"], string | null> = {
 };
 
 /** "Monday 24 August, Genesis 24, plus Psalms 23 as an extra, completed" */
-export function describeHeatCell(cell: HeatCell, isToday: boolean): string {
+export function describeHeatCell(
+  cell: HeatCell,
+  isToday: boolean,
+  perspective: ReadingPerspective = "self",
+): string {
   const datePart = format(fromDateKey(cell.date), "EEEE d MMMM");
   const prefix = isToday ? `Today, ${datePart}` : datePart;
   const summary = cell.summary;
   const status =
     isToday && cell.state === "quiet"
       ? STATUS_DESCRIPTION["today-pending"]
-      : HEAT_STATE_DESCRIPTION[cell.state];
+      : cell.state === "outside"
+        ? statusDescription("before-plan", perspective)
+        : HEAT_STATE_DESCRIPTION[cell.state];
 
   const reading =
     summary === null

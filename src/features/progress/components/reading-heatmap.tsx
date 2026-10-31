@@ -2,6 +2,7 @@
 
 import { type KeyboardEvent, useRef } from "react";
 
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 import {
   addDaysToDateKey,
   compareDateKeys,
@@ -51,6 +52,7 @@ export function ReadingHeatmap({
   onPickMonth,
 }: ReadingHeatmapProps) {
   const grid = useRef<HTMLTableElement>(null);
+  const friend = useReadingPerspective() === "friend";
   const first = heatmap.weeks[0]?.[0]?.date ?? today;
 
   function handleKeyDown(
@@ -82,8 +84,9 @@ export function ReadingHeatmap({
       className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]"
     >
       <caption className="sr-only">
-        Your reading over the last {heatmap.weeks.length} weeks. Arrow keys move
-        between days, Enter finds one in your journal.
+        {friend ? "Reading" : "Your reading"} over the last{" "}
+        {heatmap.weeks.length} weeks. Arrow keys move between days, Enter finds
+        one in {friend ? "the" : "your"} journal.
       </caption>
       <HeatmapMonthLabels
         months={heatmap.months}

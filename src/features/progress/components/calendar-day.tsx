@@ -1,6 +1,6 @@
 import { memo } from "react";
-
 import type { DayReading } from "@/features/reading-plan/domain/types";
+import { useReadingPerspective } from "@/features/reading-plan/hooks/reading-view-context";
 import { cn } from "@/lib/utils";
 
 import { ChainBand } from "./chain-band";
@@ -35,13 +35,14 @@ function CalendarDayCell({
   shape = CHAIN_CIRCLE,
   onSelect,
 }: CalendarDayProps) {
+  const perspective = useReadingPerspective();
   const appearance = getDayAppearance(day.status, { isToday, inCurrentMonth });
   const isCompleted = day.status === "completed";
 
   return (
     <button
       type="button"
-      aria-label={describeDay(day, isToday)}
+      aria-label={describeDay(day, isToday, perspective)}
       onClick={() => onSelect(day.date)}
       // Raised on focus so the ring is drawn over a neighbouring band.
       className="group relative flex h-12 min-w-0 items-center justify-center rounded-lg outline-none focus-visible:z-10 focus-visible:ring-3 focus-visible:ring-ring/50"

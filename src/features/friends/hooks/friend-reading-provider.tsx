@@ -73,7 +73,7 @@ export function FriendReadingProvider({
   if (error instanceof FriendGoneError) return <FriendUnavailable />;
 
   return (
-    <ReadingViewProvider view={view} dayHref={dayHref}>
+    <ReadingViewProvider view={view} dayHref={dayHref} perspective="friend">
       {children}
     </ReadingViewProvider>
   );
