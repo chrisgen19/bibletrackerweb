@@ -94,6 +94,29 @@ describe("auth form schemas", () => {
     expect([values.firstName, values.lastName]).toEqual(["Ruth", "Moabite"]);
   });
 
+  it("leaves the username out when it is blank", () => {
+    for (const username of [undefined, "", "   "]) {
+      expect(signUpSchema.parse({ ...signUp, username }).username).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it("normalises a username with the Friends rules", () => {
+    expect(
+      signUpSchema.parse({ ...signUp, username: " @Ruth_M " }).username,
+    ).toBe("ruth_m");
+  });
+
+  it("rejects a username the Friends step would reject", () => {
+    for (const username of ["ab", "no spaces", "@@ruth", "admin"]) {
+      const result = signUpSchema.safeParse({ ...signUp, username });
+      expect(result.error?.issues).toEqual([
+        expect.objectContaining({ path: ["username"] }),
+      ]);
+    }
+  });
+
   it("says when the passwords don't match, on the confirmation field", () => {
     const result = signUpSchema.safeParse({
       ...signUp,

@@ -25,7 +25,8 @@ import { addDaysToDateKey, type DateKey } from "@/utils/date-key";
 import { isValidTimeZone } from "@/utils/zoned-date-key";
 
 /**
- * The data access layer: the only module that queries the database.
+ * The data access layer: the only module that queries the database, together with
+ * `friends-dal.ts` (usernames, invite links and friendships; same rules).
  *
  * Mirrors bibletrackerapp's repositories (reading-plan, completion and settings) one
  * function for one function. Two differences: every function takes the reader's

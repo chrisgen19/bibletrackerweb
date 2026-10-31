@@ -6,7 +6,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { setUsername } from "@/actions/friends";
 import { Button } from "@/components/ui/button";
+import {
+  forgetMissedUsername,
+  rememberMissedUsername,
+} from "@/features/friends/missed-username";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import { authErrorMessage } from "../auth-error-message";
@@ -14,6 +19,7 @@ import { authHref } from "../safe-next-path";
 import {
   fullName,
   PASSWORD_MIN,
+  type SignUpInput,
   type SignUpValues,
   signUpSchema,
 } from "../schemas";
@@ -26,6 +32,27 @@ interface SignUpFormProps {
   googleEnabled: boolean;
 }
 
+/**
+ * Saves the username picked at sign-up. The account already exists by now, so a name that
+ * was taken (or a failed request) must not block the reader: the Friends screen asks again,
+ * and for a taken name it says why.
+ */
+async function claimUsername(userId: string, username: string): Promise<void> {
+  try {
+    const result = await setUsername({ username });
+    if (result.ok) {
+      forgetMissedUsername();
+    } else if (
+      result.error === "username-taken" ||
+      result.error === "username-just-taken"
+    ) {
+      rememberMissedUsername({ userId, username });
+    }
+  } catch {
+    // Picked later on Friends, without a note: nothing says the name was taken.
+  }
+}
+
 export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -33,13 +60,15 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpValues>({ resolver: zodResolver(signUpSchema) });
+  } = useForm<SignUpInput, unknown, SignUpValues>({
+    resolver: zodResolver(signUpSchema),
+  });
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
     // Signing up also signs in, so the reader goes straight on. Only what Better Auth
     // stores is sent: one name, and never the confirmation.
-    const { error } = await catchNetworkFailure(() =>
+    const { data, error } = await catchNetworkFailure(() =>
       authClient.signUp.email({
         name: fullName(values),
         email: values.email,
@@ -49,6 +78,9 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
     if (error) {
       setFormError(authErrorMessage(error));
       return;
+    }
+    if (values.username !== undefined && data) {
+      await claimUsername(data.user.id, values.username);
     }
     router.replace(next);
     router.refresh();
@@ -83,6 +115,22 @@ export function SignUpForm({ next, googleEnabled }: SignUpFormProps) {
           error={errors.email?.message}
           {...register("email")}
         />
+        <div className="grid gap-2">
+          <TextField
+            id="username"
+            label="Username (optional)"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            error={errors.username?.message}
+            {...register("username")}
+          />
+          <p className="text-footnote text-muted-foreground">
+            How friends find you. 3 to 20 letters, numbers or underscores. You
+            can pick one later.
+          </p>
+        </div>
         <TextField
           id="password"
           label={`Password (at least ${PASSWORD_MIN} characters)`}

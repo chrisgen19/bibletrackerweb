@@ -19,6 +19,7 @@ describe("NAV_ITEMS", () => {
     ["/day/2026-10-31", "Home"],
     ["/history", "History"],
     ["/friends", "Friends"],
+    ["/add/abc", "Friends"],
     ["/profile", "Profile"],
     // Pushed from Profile, so Profile stays lit under them.
     ["/settings", "Profile"],

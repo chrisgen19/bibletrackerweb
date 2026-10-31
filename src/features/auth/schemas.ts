@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { usernameSchema } from "@/features/friends/domain/username";
+
 // Mirrors the limits configured in src/lib/auth.ts, so the form catches them before the
 // server does.
 export const PASSWORD_MIN = 8;
@@ -53,6 +55,23 @@ const CONFIRMATION = {
 };
 
 /**
+ * Optional at sign-up: blank means "pick one later", which the Friends screen asks for.
+ * Anything typed must pass the same rules as the Friends step, and comes out normalised.
+ */
+const optionalUsername = z
+  .string()
+  .optional()
+  .transform((raw, ctx) => {
+    if (raw === undefined || raw.trim() === "") return undefined;
+    const parsed = usernameSchema.safeParse(raw);
+    if (parsed.success) return parsed.data;
+    for (const issue of parsed.error.issues) {
+      ctx.addIssue({ code: "custom", message: issue.message });
+    }
+    return z.NEVER;
+  });
+
+/**
  * The sign-up form. The two names are stored together as Better Auth's single `name`
  * (see `fullName`), and the confirmation never leaves the browser.
  */
@@ -61,6 +80,7 @@ export const signUpSchema = z
     firstName: namePart("first name"),
     lastName: namePart("last name"),
     email,
+    username: optionalUsername,
     ...passwords.shape,
   })
   .refine(passwordsMatch, CONFIRMATION);
@@ -91,6 +111,8 @@ export function fullName(values: Pick<SignUpValues, "firstName" | "lastName">) {
 }
 
 export type SignInValues = z.infer<typeof signInSchema>;
+/** What the sign-up fields hold, before `username` is normalised. */
+export type SignUpInput = z.input<typeof signUpSchema>;
 export type SignUpValues = z.infer<typeof signUpSchema>;
 export type EditNameValues = z.infer<typeof editNameSchema>;
 export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;

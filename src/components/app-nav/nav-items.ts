@@ -35,7 +35,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
     href: "/friends",
     label: "Friends",
     icon: Users,
-    match: (pathname) => startsWith(pathname, "/friends"),
+    match: (pathname) =>
+      startsWith(pathname, "/friends") || startsWith(pathname, "/add"),
   },
   {
     href: "/profile",
