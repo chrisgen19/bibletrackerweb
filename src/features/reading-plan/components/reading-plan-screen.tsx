@@ -72,7 +72,7 @@ export function ReadingPlanScreen() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-24">
+    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-tab-bar">
       <ScreenHeader
         title="Reading Plan"
         backHref="/settings"

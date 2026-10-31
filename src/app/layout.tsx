@@ -27,6 +27,8 @@ export async function generateViewport(): Promise<Viewport> {
     (await readAppearanceCookie()) ?? DEFAULT_APPEARANCE,
   );
   return {
+    // Draws under the home indicator, so the tab bar can pad itself with the safe area.
+    viewportFit: "cover",
     themeColor: [
       { media: "(prefers-color-scheme: light)", color: colors.light },
       { media: "(prefers-color-scheme: dark)", color: colors.dark },

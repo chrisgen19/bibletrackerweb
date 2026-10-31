@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 
 /**
  * What the network adds to the iOS app: a save still on its way, and a save the server
- * refused. Pinned to the bottom of every screen, since any of them can write.
+ * refused. Pinned to the bottom of every screen, since any of them can write, and lifted
+ * clear of the tab bar when there is one.
  */
 export function WriteStatus() {
   const { error, dismissError, isSaving } = useReadingData();
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 px-4 pb-[max(1rem,env(safe-area-inset-bottom),calc(var(--tab-bar-clearance)+0.5rem))]">
       {error === null ? null : (
         <div
           role="alert"

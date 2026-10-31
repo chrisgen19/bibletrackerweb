@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { LensTabBar } from "@/components/app-nav/lens-tab-bar";
 import { QueryProvider } from "@/components/query-provider";
 import { AccountProvider } from "@/features/auth/hooks/account-context";
 import { WriteStatus } from "@/features/reading-plan/components/write-status";
@@ -43,6 +44,7 @@ export default async function AppLayout({
           initialTimeZoneFromDevice={zone.fromDevice}
         >
           {children}
+          <LensTabBar />
           {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
           {sheet}
           <WriteStatus />

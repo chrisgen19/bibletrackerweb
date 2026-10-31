@@ -25,7 +25,7 @@ export default async function DayPage({
   const query = await searchParams;
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-24">
+    <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-tab-bar">
       <Link
         href="/"
         className="-ml-2 mb-3 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-callout text-primary outline-none hover:bg-primary-soft focus-visible:ring-3 focus-visible:ring-ring/50"

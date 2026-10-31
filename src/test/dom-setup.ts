@@ -32,7 +32,12 @@ export const router = {
   refresh: vi.fn(),
   prefetch: vi.fn(),
 };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+// The current route, for components that read it. Tests set it before rendering.
+export const navigation = { pathname: "/" };
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  usePathname: () => navigation.pathname,
+}));
 
 // A plain anchor: these tests check where a link points, not how Next navigates.
 vi.mock("next/link", async () => {
