@@ -22,7 +22,11 @@ export function ProfileScreen() {
   const name = account.name.trim();
   const stats = [
     { value: String(streaks.current), label: "day streak" },
-    { value: chaptersRead.toLocaleString("en-US"), label: "chapters read" },
+    // Per read-through, as on Home: it starts again from 0 each time through.
+    {
+      value: chaptersRead.toLocaleString("en-US"),
+      label: "chapters this read-through",
+    },
     { value: String(finishedReadThroughs), label: "times through" },
   ];
 

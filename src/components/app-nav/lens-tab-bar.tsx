@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,12 @@ export function LensTabBar() {
   const canRefract = useCanRefract();
   const droplet = useRef<HTMLSpanElement>(null);
   const [press, setPress] = useState<Press | null>(null);
+
+  // A press belongs to the route it started on. Forgotten once that route is left, or the
+  // back button would bring it back over a tab that is no longer the one pressed.
+  useEffect(() => {
+    setPress((p) => (p !== null && p.pathname !== pathname ? null : p));
+  }, [pathname]);
 
   const activeIndex = NAV_ITEMS.findIndex((item) => item.match(pathname));
   const live = press?.pathname === pathname ? press : null;
@@ -104,8 +110,11 @@ function TabLink({ item, active, lit, onPress, onRelease }: TabLinkProps) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       onPointerDown={(event) => {
-        // A right or middle click opens a menu or a new tab, not this tab.
-        if (event.button === 0) onPress();
+        // A right or middle click, or one with a modifier key, opens a menu, a tab or a
+        // download: the browser's, not a move to this tab.
+        const modified =
+          event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+        if (event.button === 0 && !modified) onPress();
       }}
       onPointerUp={(event) =>
         onRelease(
@@ -117,6 +126,13 @@ function TabLink({ item, active, lit, onPress, onRelease }: TabLinkProps) {
         )
       }
       onPointerCancel={() => onRelease(false)}
+      onPointerLeave={(event) => {
+        // A mouse is not captured like a finger: once it leaves with the button down, its
+        // release lands elsewhere. A finger's pointerleave comes after it has lifted.
+        if (event.pointerType === "mouse" && (event.buttons & 1) === 1) {
+          onRelease(false);
+        }
+      }}
       className={cn(
         "relative z-10 flex min-h-11 touch-manipulation select-none flex-col items-center justify-center gap-0.5 rounded-full font-medium text-[0.6875rem] leading-[0.875rem] outline-none transition-colors duration-200 [-webkit-tap-highlight-color:transparent]",
         "focus-visible:ring-2 focus-visible:ring-primary",

@@ -136,4 +136,56 @@ describe("LensTabBar", () => {
       Reflect.deleteProperty(navigator, "userAgentData");
     }
   });
+
+  it("forgets a press once its route is left, so going back does not revive it", () => {
+    const { rerender } = renderAt("/");
+    const history = screen.getByRole("link", { name: "History" });
+    history.getBoundingClientRect = () => new DOMRect(0, 0, 50, 50);
+    fireEvent.pointerDown(history, { button: 0 });
+    fireEvent.pointerUp(history, { clientX: 20, clientY: 20 });
+
+    navigation.pathname = "/history";
+    rerender(<LensTabBar />);
+    // The browser's back button.
+    navigation.pathname = "/";
+    rerender(<LensTabBar />);
+
+    expect(lensOffset()).toBe("translateX(0%)");
+  });
+
+  it.each([
+    ["ctrlKey"],
+    ["metaKey"],
+    ["shiftKey"],
+    ["altKey"],
+  ])("ignores a click with %s, which the browser handles without navigating here", (key) => {
+    renderAt("/");
+
+    fireEvent.pointerDown(screen.getByRole("link", { name: "Friends" }), {
+      button: 0,
+      [key]: true,
+    });
+
+    expect(lensOffset()).toBe("translateX(0%)");
+  });
+
+  it("sends the lens back when a held mouse leaves the tab", () => {
+    renderAt("/");
+    const friends = screen.getByRole("link", { name: "Friends" });
+
+    fireEvent.pointerDown(friends, { button: 0, pointerType: "mouse" });
+    fireEvent.pointerLeave(friends, { pointerType: "mouse", buttons: 1 });
+
+    expect(lensOffset()).toBe("translateX(0%)");
+  });
+
+  it("keeps a touch press through the pointerleave that follows lifting", () => {
+    renderAt("/");
+    const friends = screen.getByRole("link", { name: "Friends" });
+
+    fireEvent.pointerDown(friends, { button: 0, pointerType: "touch" });
+    fireEvent.pointerLeave(friends, { pointerType: "touch", buttons: 0 });
+
+    expect(lensOffset()).toBe("translateX(200%)");
+  });
 });
