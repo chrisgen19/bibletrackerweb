@@ -25,6 +25,8 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false) @map("email_verified")
   image         String?
+  /// Public handle for finding friends. Null until the reader picks one.
+  username      String?  @unique
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -33,6 +35,9 @@ model User {
   readingPlans       ReadingPlan[]
   readingCompletions ReadingCompletion[]
   appSettings        AppSetting[]
+  friendInvite       FriendInvite?
+  friendshipsAsA     Friendship[]        @relation("FriendshipUserA")
+  friendshipsAsB     Friendship[]        @relation("FriendshipUserB")
 
   @@map("user")
 }
@@ -175,4 +180,43 @@ model AppSetting {
 
   @@id([userId, key])
   @@map("app_setting")
+}
+
+/// A reader's personal invite link. Reusable by anyone until reset.
+model FriendInvite {
+  userId    String   @id @map("user_id")
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("friend_invite")
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+
+  @@map("friendship_status")
+}
+
+/// A friend request (pending) or a friendship (accepted) between two readers.
+///
+/// The pair is stored in a fixed order (user_a_id < user_b_id), so A-to-B and B-to-A
+/// are the same row and a plain unique index stops duplicates in either direction.
+model Friendship {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userAId       String           @map("user_a_id")
+  userBId       String           @map("user_b_id")
+  requestedById String           @map("requested_by_id")
+  status        FriendshipStatus @default(pending)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  acceptedAt    DateTime?        @map("accepted_at") @db.Timestamptz(3)
+
+  userA User @relation("FriendshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("FriendshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@map("friendship")
 }
