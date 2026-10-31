@@ -4,11 +4,16 @@ import {
   generateInviteCode,
   isInviteCode,
 } from "@/features/friends/domain/invite-code";
-import type {
-  FriendProfile,
-  PublicHandle,
+import {
+  type FriendProfile,
+  type FriendsOverview,
+  MAX_FRIENDS,
+  MAX_PENDING_OUTGOING,
+  type PublicHandle,
+  type Relationship,
 } from "@/features/friends/domain/types";
-import { isUniqueViolation } from "@/lib/dal";
+import type { Prisma } from "@/generated/prisma/client";
+import { isForeignKeyViolation, isUniqueViolation } from "@/lib/dal";
 import { db } from "@/lib/db";
 
 /**
@@ -120,4 +125,240 @@ export async function findInviteOwner(
     name: owner.name,
     image: owner.image,
   };
+}
+
+export type SendOutcome =
+  | "requested"
+  | "accepted"
+  | "already-requested"
+  | "already-friends"
+  | "too-many-pending"
+  | "friend-limit"
+  | "not-found";
+
+/** Rows are stored with the smaller id first (the table's CHECK); plain `<` matches it. */
+function orderPair(a: string, b: string): { userAId: string; userBId: string } {
+  return a < b ? { userAId: a, userBId: b } : { userAId: b, userBId: a };
+}
+
+const involving = (userId: string): Prisma.FriendshipWhereInput => ({
+  OR: [{ userAId: userId }, { userBId: userId }],
+});
+
+/**
+ * Serialises changes to one pair, inside a transaction. Locks both readers (sorted, so
+ * two opposite requests never deadlock) under a `friends:` key that cannot collide with
+ * `lockReader`'s in `dal.ts`. Locking each reader, not the pair, also serialises one
+ * reader's pending and friend counts across different partners.
+ */
+async function withPairLocked<T>(
+  userId: string,
+  otherUserId: string,
+  work: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  const [first, second] = [userId, otherUserId].sort();
+  return db.$transaction(async (tx) => {
+    for (const id of [first, second]) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`friends:${id}`}, 0))`;
+    }
+    return work(tx);
+  });
+}
+
+async function countFriends(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<number> {
+  return tx.friendship.count({
+    where: { status: "accepted", ...involving(userId) },
+  });
+}
+
+async function eitherAtFriendLimit(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  otherUserId: string,
+): Promise<boolean> {
+  const [mine, theirs] = await Promise.all([
+    countFriends(tx, userId),
+    countFriends(tx, otherUserId),
+  ]);
+  return mine >= MAX_FRIENDS || theirs >= MAX_FRIENDS;
+}
+
+/**
+ * Asks `otherUserId` to be friends, following the spec's state table: a request the
+ * other side already made becomes a friendship, a repeat reports the current state.
+ * Callers never pass the same id twice. A missing other user comes back as "not-found".
+ */
+export async function sendFriendRequest(
+  userId: string,
+  otherUserId: string,
+): Promise<SendOutcome> {
+  const pair = orderPair(userId, otherUserId);
+  try {
+    return await withPairLocked(userId, otherUserId, async (tx) => {
+      const row = await tx.friendship.findUnique({
+        where: { userAId_userBId: pair },
+      });
+      if (row !== null) {
+        if (row.status === "accepted") return "already-friends";
+        if (row.requestedById === userId) return "already-requested";
+        if (await eitherAtFriendLimit(tx, userId, otherUserId)) {
+          return "friend-limit";
+        }
+        await tx.friendship.update({
+          where: { id: row.id },
+          data: { status: "accepted", acceptedAt: new Date() },
+        });
+        return "accepted";
+      }
+      const pending = await tx.friendship.count({
+        where: { requestedById: userId, status: "pending" },
+      });
+      if (pending >= MAX_PENDING_OUTGOING) return "too-many-pending";
+      await tx.friendship.create({ data: { ...pair, requestedById: userId } });
+      return "requested";
+    });
+  } catch (error) {
+    if (isForeignKeyViolation(error)) return "not-found";
+    throw error;
+  }
+}
+
+/** The receiver accepts a pending request; anyone else, or no request, is "not-found". */
+export async function acceptFriendRequest(
+  userId: string,
+  otherUserId: string,
+): Promise<"accepted" | "not-found" | "friend-limit"> {
+  const pair = orderPair(userId, otherUserId);
+  return withPairLocked(userId, otherUserId, async (tx) => {
+    const row = await tx.friendship.findFirst({
+      where: { ...pair, requestedById: otherUserId, status: "pending" },
+    });
+    if (row === null) return "not-found";
+    if (await eitherAtFriendLimit(tx, userId, otherUserId)) {
+      return "friend-limit";
+    }
+    await tx.friendship.update({
+      where: { id: row.id },
+      data: { status: "accepted", acceptedAt: new Date() },
+    });
+    return "accepted";
+  });
+}
+
+/** Deletes the row only when it matches the given role checks; true when it did. */
+async function deleteMatching(
+  userId: string,
+  otherUserId: string,
+  where: Prisma.FriendshipWhereInput,
+): Promise<boolean> {
+  const { count } = await db.friendship.deleteMany({
+    where: { ...orderPair(userId, otherUserId), ...where },
+  });
+  return count > 0;
+}
+
+/** The receiver turns down a pending request; the row is deleted. */
+export function declineFriendRequest(
+  userId: string,
+  otherUserId: string,
+): Promise<boolean> {
+  return deleteMatching(userId, otherUserId, {
+    requestedById: otherUserId,
+    status: "pending",
+  });
+}
+
+/** The requester withdraws their own pending request. */
+export function cancelFriendRequest(
+  userId: string,
+  otherUserId: string,
+): Promise<boolean> {
+  return deleteMatching(userId, otherUserId, {
+    requestedById: userId,
+    status: "pending",
+  });
+}
+
+/** Either friend ends an accepted friendship; pending requests are not touched. */
+export function removeFriend(
+  userId: string,
+  otherUserId: string,
+): Promise<boolean> {
+  return deleteMatching(userId, otherUserId, { status: "accepted" });
+}
+
+/** Declines every pending request sent to the reader; returns how many. */
+export async function declineAllFriendRequests(
+  userId: string,
+): Promise<number> {
+  const { count } = await db.friendship.deleteMany({
+    where: {
+      ...involving(userId),
+      status: "pending",
+      requestedById: { not: userId },
+    },
+  });
+  return count;
+}
+
+export async function getRelationship(
+  userId: string,
+  otherUserId: string,
+): Promise<Relationship> {
+  if (userId === otherUserId) return "self";
+  const row = await db.friendship.findUnique({
+    where: { userAId_userBId: orderPair(userId, otherUserId) },
+    select: { status: true, requestedById: true },
+  });
+  if (row === null) return "none";
+  if (row.status === "accepted") return "friends";
+  return row.requestedById === userId ? "outgoing" : "incoming";
+}
+
+/**
+ * Friends, incoming and outgoing requests for the Friends screen. Selects name, photo
+ * and username of the other person, never email; outgoing carries the handle only.
+ */
+export async function getFriendsOverview(
+  userId: string,
+): Promise<FriendsOverview> {
+  const otherSelect = {
+    select: { id: true, username: true, name: true, image: true },
+  } as const;
+  const rows = await db.friendship.findMany({
+    where: involving(userId),
+    orderBy: { createdAt: "desc" },
+    select: {
+      userAId: true,
+      requestedById: true,
+      status: true,
+      userA: otherSelect,
+      userB: otherSelect,
+    },
+  });
+
+  const friends: FriendProfile[] = [];
+  const incoming: FriendProfile[] = [];
+  const outgoing: PublicHandle[] = [];
+  for (const row of rows) {
+    const other = row.userAId === userId ? row.userB : row.userA;
+    if (other.username === null) continue;
+    const profile: FriendProfile = {
+      userId: other.id,
+      username: other.username,
+      name: other.name,
+      image: other.image,
+    };
+    if (row.status === "accepted") friends.push(profile);
+    else if (row.requestedById === userId) {
+      outgoing.push({ userId: other.id, username: other.username });
+    } else incoming.push(profile);
+  }
+  friends.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+  );
+  return { friends, incoming, outgoing };
 }
