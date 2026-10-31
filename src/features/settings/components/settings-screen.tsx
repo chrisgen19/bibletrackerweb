@@ -50,7 +50,7 @@ export function SettingsScreen({
 
   return (
     <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-24">
-      <ScreenHeader title="Settings" backHref="/" backLabel="Your Reading" />
+      <ScreenHeader title="Settings" backHref="/profile" backLabel="Profile" />
 
       <section aria-labelledby="plan-heading">
         <SectionHeader id="plan-heading" title="Reading Plan" />

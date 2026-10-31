@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 
 import { setCalendarView } from "@/actions/reading";
-import { AccountMenu } from "@/features/auth/components/account-menu";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 import {
@@ -78,10 +77,9 @@ export function ProgressScreen({
 
   return (
     <main className="mx-auto w-full max-w-5xl px-5 pt-6 pb-24">
-      <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-large-title">Your Reading</h1>
-        <AccountMenu />
-      </div>
+      <h1 className="mb-3 flex min-h-11 items-center text-large-title">
+        Your Reading
+      </h1>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
         <CalendarSurface
