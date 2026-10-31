@@ -32,6 +32,7 @@ export default async function AddFriendPage(props: PageProps<"/add/[code]">) {
   return (
     <main className="mx-auto w-full max-w-lg px-5 pt-4 pb-tab-bar">
       <InviteScreen
+        userId={user.id}
         owner={owner}
         relationship={relationship}
         viewerHasUsername={username !== null}

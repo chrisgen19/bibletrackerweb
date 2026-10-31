@@ -8,6 +8,7 @@ import { cancelRequest, sendRequestByInvite } from "@/actions/friends";
 import { Panel } from "@/components/panel";
 import { Button } from "@/components/ui/button";
 import { CopyShareButtons } from "@/features/friends/components/copy-share-buttons";
+import { MissedUsernameNote } from "@/features/friends/components/missed-username-note";
 import { PersonRow } from "@/features/friends/components/person-row";
 import { UsernameForm } from "@/features/friends/components/username-form";
 import type {
@@ -15,8 +16,11 @@ import type {
   Relationship,
 } from "@/features/friends/domain/types";
 import { useFriendAction } from "@/features/friends/hooks/use-friend-action";
+import { forgetMissedUsername } from "@/features/friends/missed-username";
 
 interface InviteScreenProps {
+  /** The viewer, for the note when their sign-up username was taken. */
+  userId: string;
   /** Null when the code is unknown, malformed or reset. */
   owner: FriendProfile | null;
   relationship: Relationship;
@@ -30,6 +34,7 @@ interface InviteScreenProps {
 
 /** What opening someone's invite link shows. Reads only: nothing is sent until a tap. */
 export function InviteScreen({
+  userId,
   owner,
   relationship,
   viewerHasUsername,
@@ -68,6 +73,7 @@ export function InviteScreen({
   }
   return (
     <Respond
+      userId={userId}
       owner={owner}
       relationship={relationship}
       viewerHasUsername={viewerHasUsername}
@@ -102,6 +108,7 @@ function OwnLink({ inviteUrl }: { inviteUrl: string | null }) {
 }
 
 interface RespondProps {
+  userId: string;
   owner: FriendProfile;
   relationship: Relationship;
   viewerHasUsername: boolean;
@@ -110,6 +117,7 @@ interface RespondProps {
 }
 
 function Respond({
+  userId,
   owner,
   relationship,
   viewerHasUsername,
@@ -138,6 +146,7 @@ function Respond({
   async function sendAfterSaving() {
     // The username is saved either way: refresh so the page drops the form and a
     // retry is the plain button.
+    forgetMissedUsername();
     if (!(await send())) router.refresh();
   }
 
@@ -188,6 +197,10 @@ function Respond({
       ) : null}
       {needsUsername ? (
         <div className="px-4 pb-3">
+          <MissedUsernameNote
+            userId={userId}
+            className="mb-2 text-callout text-muted-foreground"
+          />
           <p className="mb-3 text-callout text-muted-foreground">
             Pick a username so they can recognise you.
           </p>

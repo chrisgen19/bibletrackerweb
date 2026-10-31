@@ -26,6 +26,7 @@ type Props = Parameters<typeof InviteScreen>[0];
 function renderScreen(overrides: Partial<Props> = {}) {
   render(
     <InviteScreen
+      userId="me"
       owner={OWNER}
       relationship="none"
       viewerHasUsername
@@ -38,6 +39,7 @@ function renderScreen(overrides: Partial<Props> = {}) {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   for (const action of Object.values(actions)) {
     action.mockReset();
     action.mockResolvedValue({ ok: true });
@@ -112,6 +114,38 @@ describe("InviteScreen", () => {
       code: "abc123",
     });
     expect(router.push).toHaveBeenCalledWith("/friends");
+  });
+
+  it("says why it asks for a username when the sign-up pick was taken", async () => {
+    localStorage.setItem(
+      "friends:missed-username",
+      JSON.stringify({ userId: "me", username: "ruth" }),
+    );
+    renderScreen({ viewerHasUsername: false });
+
+    expect(
+      await screen.findByText(
+        "@ruth was already taken when you signed up, so pick another one.",
+      ),
+    ).toBeTruthy();
+
+    await userEvent.type(screen.getByLabelText("Username"), "ruth_m");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save and send request" }),
+    );
+
+    expect(router.push).toHaveBeenCalledWith("/friends");
+    expect(localStorage.getItem("friends:missed-username")).toBeNull();
+  });
+
+  it("shows no sign-up note once the reader has a username", () => {
+    localStorage.setItem(
+      "friends:missed-username",
+      JSON.stringify({ userId: "me", username: "ruth" }),
+    );
+    renderScreen();
+
+    expect(screen.queryByText(/already taken when you signed up/)).toBeNull();
   });
 
   it("shows the error and refreshes when sending fails after the username saved", async () => {
