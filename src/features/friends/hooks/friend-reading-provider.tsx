@@ -28,21 +28,32 @@ interface FriendReadingProviderProps {
   username: string;
   /** What the server rendered, so mounting does not fetch it again. */
   initial: FriendReading;
+  /** Shown once the friendship has ended. Defaults to {@link FriendUnavailable}. */
+  unavailable?: ReactNode;
   children: ReactNode;
 }
+
+/**
+ * How often an open, visible profile refetches. The server works out the friend's "today",
+ * so this is what moves it on past the friend's midnight while nobody touches the page
+ * (the client does not know the friend's zone). It also shows a reading as it is logged.
+ */
+export const FRIEND_READING_REFETCH_MS = 5 * 60_000;
 
 /**
  * Feeds a friend's reading into the read-only view context, shadowing the reader's own
  * for everything below, so the calendar, heatmap and journal render the friend. Day links
  * stay inside the friend's profile.
  *
- * The reading is refetched when the window regains focus, so a friend's new reading shows
- * up. If that answers 404 the friendship has ended, and the profile gives way to
- * {@link FriendUnavailable}; a 404 is not retried.
+ * The reading is refetched when the window regains focus, and every
+ * {@link FRIEND_READING_REFETCH_MS} while the tab is visible, so a friend's new reading and
+ * new day show up. If that answers 404 the friendship has ended, and the profile gives way
+ * to `unavailable`; a 404 is not retried.
  */
 export function FriendReadingProvider({
   username,
   initial,
+  unavailable = <FriendUnavailable />,
   children,
 }: FriendReadingProviderProps) {
   const { data, error } = useQuery({
@@ -54,6 +65,8 @@ export function FriendReadingProvider({
     staleTime: 0,
     refetchOnMount: false,
     refetchOnWindowFocus: true,
+    // Paused while the tab is in the background (refetchIntervalInBackground is false).
+    refetchInterval: FRIEND_READING_REFETCH_MS,
     // Dropped once the profile closes: the server-rendered `initial` of the next visit is
     // at least as fresh as anything cached, and a stale 404 must not outlive a re-friend.
     gcTime: 0,
@@ -70,7 +83,7 @@ export function FriendReadingProvider({
     [username],
   );
 
-  if (error instanceof FriendGoneError) return <FriendUnavailable />;
+  if (error instanceof FriendGoneError) return unavailable;
 
   return (
     <ReadingViewProvider view={view} dayHref={dayHref} perspective="friend">

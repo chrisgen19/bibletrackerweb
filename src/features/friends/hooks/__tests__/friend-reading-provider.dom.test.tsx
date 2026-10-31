@@ -14,7 +14,10 @@ import {
   useReadingView,
 } from "@/features/reading-plan/hooks/reading-view-context";
 
-import { FriendReadingProvider } from "../friend-reading-provider";
+import {
+  FRIEND_READING_REFETCH_MS,
+  FriendReadingProvider,
+} from "../friend-reading-provider";
 
 const EMPTY = { plans: [], activePlan: null, completions: [] };
 const FRIEND: FriendReading = { snapshot: EMPTY, today: "2026-10-31" };
@@ -42,6 +45,7 @@ function renderUnderReader(children: React.ReactNode) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   focusManager.setFocused(undefined);
 });
@@ -92,6 +96,30 @@ describe("FriendReadingProvider", () => {
       await screen.findByText("This profile isn't available"),
     ).toBeTruthy();
     expect(screen.queryByTestId("child")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves on to the friend's new day while the profile stays open", async () => {
+    // Only the interval is faked: the response body and TanStack's hand-off to React run
+    // on real timers.
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const NEXT_DAY: FriendReading = { snapshot: EMPTY, today: "2026-11-01" };
+    const fetchMock = vi.fn(async () => Response.json(NEXT_DAY));
+    vi.stubGlobal("fetch", fetchMock);
+    renderUnderReader(
+      <FriendReadingProvider username="maria" initial={FRIEND}>
+        <Probe id="child" />
+      </FriendReadingProvider>,
+    );
+
+    act(() => vi.advanceTimersByTime(FRIEND_READING_REFETCH_MS - 1));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(
+      await screen.findByText("2026-11-01 /friends/maria/day/2026-10-28"),
+    ).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

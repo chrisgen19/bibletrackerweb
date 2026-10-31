@@ -44,12 +44,18 @@ export function FriendDayDetail({ date, heading }: FriendDayDetailProps) {
 
   if (!isValidDateKey(date)) {
     return (
-      <EmptyState
-        icon={Calendar}
-        title="That day isn't available"
-        description="We couldn't find a reading for that date."
-        compact
-      />
+      <>
+        {/* The dialog needs a name; the empty state has no heading of its own. */}
+        {heading === "sheet" ? (
+          <SheetTitle className="sr-only">Day unavailable</SheetTitle>
+        ) : null}
+        <EmptyState
+          icon={Calendar}
+          title="That day isn't available"
+          description="We couldn't find a reading for that date."
+          compact
+        />
+      </>
     );
   }
 

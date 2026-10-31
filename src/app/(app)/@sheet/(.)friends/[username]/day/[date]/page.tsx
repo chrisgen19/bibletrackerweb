@@ -1,4 +1,3 @@
-import { SheetTitle } from "@/components/ui/sheet";
 import { FriendDayDetail } from "@/features/friends/components/friend-profile/friend-day-detail";
 import { FriendUnavailable } from "@/features/friends/components/friend-profile/friend-unavailable";
 import { FriendReadingProvider } from "@/features/friends/hooks/friend-reading-provider";
@@ -22,9 +21,7 @@ export default async function InterceptedFriendDay({
   if (lookup.kind === "not-found") {
     return (
       <DaySheet>
-        {/* The dialog needs a name; the unavailable state has no heading of its own. */}
-        <SheetTitle className="sr-only">Profile unavailable</SheetTitle>
-        <FriendUnavailable />
+        <FriendUnavailable inSheet />
       </DaySheet>
     );
   }
@@ -34,6 +31,7 @@ export default async function InterceptedFriendDay({
       <FriendReadingProvider
         username={lookup.profile.username}
         initial={lookup.reading}
+        unavailable={<FriendUnavailable inSheet />}
       >
         <FriendDayDetail date={date} heading="sheet" />
       </FriendReadingProvider>
