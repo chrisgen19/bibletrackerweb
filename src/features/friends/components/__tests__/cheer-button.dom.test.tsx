@@ -101,11 +101,11 @@ describe("CheerButton", () => {
     expect(screen.getByText(NETWORK)).toBeTruthy();
   });
 
-  it.each([
-    "already-nudged",
-    "already-read",
-  ])("keeps the confirmation without an error for %s", async (error) => {
-    actions.nudgeFriend.mockResolvedValue({ ok: false, error });
+  it("keeps the confirmation without an error for already-nudged", async () => {
+    actions.nudgeFriend.mockResolvedValue({
+      ok: false,
+      error: "already-nudged",
+    });
     renderCard();
 
     await act(async () => {
@@ -115,6 +115,30 @@ describe("CheerButton", () => {
     expect(screen.getByText("You cheered Maria on today")).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(fetch).toHaveBeenCalled();
+  });
+
+  it("switches the card to the reading when the friend already read", async () => {
+    actions.nudgeFriend.mockResolvedValue({ ok: false, error: "already-read" });
+    const READ: FriendReading = {
+      ...NOT_READ,
+      snapshot: {
+        ...NOT_READ.snapshot,
+        completions: [makeCompletion("2026-10-31")],
+      },
+    };
+    renderCard();
+    // The refresh the rejection triggers finds the friend's completion for today.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(READ))),
+    );
+
+    await act(async () => {
+      fireEvent.click(cheerButton() as HTMLElement);
+    });
+
+    expect(await screen.findByText(/^Read today:/)).toBeTruthy();
+    expect(cheerButton()).toBeNull();
   });
 
   it("shows the button again when the friend's day moves on", async () => {
