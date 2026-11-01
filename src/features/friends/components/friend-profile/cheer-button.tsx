@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, HandHeart } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { nudgeFriend } from "@/actions/friends";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,14 @@ export function CheerButton({ friend }: { friend: FriendProfile }) {
   const { nudgedToday, refresh } = useFriendNudgeState();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A ref, not `sent`: two taps can land before React re-renders, and both handlers would
+  // then read the same stale `sent === false`. The ref is set synchronously on the first.
+  const inFlight = useRef(false);
   const name = firstName(friend);
 
   async function cheer() {
-    if (sent) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setSent(true);
     setError(null);
     try {
@@ -39,6 +43,8 @@ export function CheerButton({ friend }: { friend: FriendProfile }) {
     } catch {
       setSent(false);
       setError(friendsErrorMessage("network"));
+    } finally {
+      inFlight.current = false;
     }
   }
 

@@ -81,8 +81,13 @@ describe("CheerButton", () => {
     renderCard();
     const button = cheerButton() as HTMLElement;
 
-    fireEvent.click(button);
-    fireEvent.click(button);
+    // Both taps land before React re-renders (one act batch), so the button is still
+    // mounted for the second one and its handler runs twice. Only the in-flight guard
+    // stops a second request; the swap to the confirmation cannot.
+    act(() => {
+      button.click();
+      button.click();
+    });
 
     expect(screen.getByText("You cheered Maria on today")).toBeTruthy();
     expect(actions.nudgeFriend).toHaveBeenCalledTimes(1);
