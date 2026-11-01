@@ -132,12 +132,15 @@ Today's reading card (`TodayReadingCard`) gets a tinted row across its top edge:
   back on the next refresh, with no error shown (*my call*: low stakes).
 - **Shown on every variant of the card** (*my call*): scheduled, "Nothing scheduled",
   "Your plan starts soon", and "You have finished the Bible", since a reader can still
-  record a custom or extra reading on those days. **Not shown** once today's day status is
-  `"completed"`, which is set whenever any reading exists for the date, extras included
-  (`src/features/reading-plan/domain/schedule.ts:369-371`, `:429`). That matches the
-  server's closing rule below, and also covers a part-read chapter showing "Continue
-  Reading" (`today-reading-card.tsx:105`) and a custom reading on a non-scheduled day,
-  not only the "Completed today" state.
+  record a custom or extra reading on those days. **Not shown** once any reading exists
+  for today, extras included: `completionLookup.has(today)` from the reader's full view
+  (`progress-screen.tsx`). That matches the server's closing rule below, and also covers
+  a part-read chapter showing "Continue Reading" and a custom reading on a non-scheduled
+  day, not only the "Completed today" state.
+- Not the Today card's day status (`todayReading.status`): `useTodayReading` reads the
+  plan's view (`planScheduleContext`, `use-today-reading.ts`), which an extra reading
+  does not complete, so a reader who logged only an extra would keep seeing the row until
+  the next refetch. Review on #35 (Codex).
 - Screen readers read the row as text; the avatars are decorative (as `Avatar` already is).
 - Mobile first; check at phone width with the week strip and the month view.
 
@@ -175,8 +178,8 @@ Consequences, all intended:
   (`reading-data-provider.tsx:150`), through a GET route under `/api` (the proxy skips
   `/api`, so the route checks the session itself and answers 401 with no detail).
 - Marking today as read hides the row immediately in the browser (it is derived from the
-  reader's local "today completed" state, which is already optimistic), without waiting
-  for a refetch.
+  reader's local completions, `completionLookup.has(today)`, which are already
+  optimistic), without waiting for a refetch.
 
 ## Server rules
 
