@@ -247,6 +247,14 @@ describe("MonthPager", () => {
       expect(height()).toBe(`${getGridHeight(6)}px`);
     });
 
+    it("stays tall while sliding back from a taller month, so its last row is not clipped", () => {
+      renderPager(JUNE);
+
+      swipe(WIDTH * 0.1, 1_500);
+
+      expect(height()).toBe(`${getGridHeight(6)}px`);
+    });
+
     it("returns to the month's height after sliding back", () => {
       renderPager(JUNE);
 
