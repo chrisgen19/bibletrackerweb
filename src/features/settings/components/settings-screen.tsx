@@ -6,6 +6,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { SectionHeader } from "@/components/section-header";
 import { getCanonIndex } from "@/data/bible/canon-index";
 import { SignOutButton } from "@/features/auth/components/sign-out-button";
+import { NotificationsSection } from "@/features/push/components/notifications-section";
 import { formatReference } from "@/features/reading-plan/domain/reference";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import type { AppearancePreference } from "@/lib/settings";
@@ -24,6 +25,8 @@ interface SettingsScreenProps {
   hasPassword: boolean;
   /** Null when Google sign-in is not configured. */
   google: GoogleLinkState | null;
+  /** Null when web push is not configured. */
+  vapidPublicKey: string | null;
 }
 
 /**
@@ -36,6 +39,7 @@ export function SettingsScreen({
   email,
   hasPassword,
   google,
+  vapidPublicKey,
 }: SettingsScreenProps) {
   const { activePlan, scheduleContext } = useReadingData();
   // Where the reader is: the head of the unread queue, as the day detail reads it. Not
@@ -72,6 +76,8 @@ export function SettingsScreen({
         <SectionHeader id="appearance-heading" title="Appearance" />
         <AppearanceSelector initial={appearance} />
       </section>
+
+      <NotificationsSection publicKey={vapidPublicKey} />
 
       <section aria-labelledby="account-heading" className="mt-6">
         <SectionHeader id="account-heading" title="Account" />

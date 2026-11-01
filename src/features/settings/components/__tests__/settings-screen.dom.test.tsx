@@ -18,6 +18,13 @@ vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
 vi.mock("@/features/reading-plan/hooks/use-writes-settled", () => ({
   useWritesSettled: () => true,
 }));
+vi.mock("@/features/push/hooks/use-push-device", () => ({
+  usePushDevice: () => ({
+    status: "off",
+    turnOn: vi.fn(),
+    turnOff: vi.fn(),
+  }),
+}));
 vi.mock("@/actions/reading", () => ({ setAppearance: vi.fn() }));
 vi.mock("@/features/auth/components/sign-out-button", () => ({
   SignOutButton: () => null,
@@ -43,11 +50,24 @@ function renderSettings(google: Google = null, hasPassword = true) {
       email="reader@example.test"
       hasPassword={hasPassword}
       google={google}
+      vapidPublicKey="test-key"
     />,
   );
 }
 
 describe("SettingsScreen", () => {
+  it("places Notifications between Appearance and Account", () => {
+    renderSettings();
+
+    const order = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((h) => h.textContent)
+      .filter((t) =>
+        ["Appearance", "Notifications", "Account"].includes(t ?? ""),
+      );
+    expect(order).toEqual(["Appearance", "Notifications", "Account"]);
+  });
+
   it("shows where the reader is, not where the plan segment began", () => {
     renderSettings();
 
@@ -70,6 +90,7 @@ describe("SettingsScreen", () => {
         email="reader@example.test"
         hasPassword
         google={null}
+        vapidPublicKey={null}
       />,
     );
 
