@@ -38,9 +38,14 @@ self.addEventListener("notificationclick", (event) => {
         client.url.startsWith(self.location.origin),
       );
       if (existing) {
-        await existing.focus();
-        await existing.navigate(url);
-        return;
+        try {
+          await existing.focus();
+          // Rejects (or is missing) for a window this worker does not control.
+          await existing.navigate(url);
+          return;
+        } catch {
+          // Fall through and open a window instead.
+        }
       }
       await self.clients.openWindow(url);
     })(),
