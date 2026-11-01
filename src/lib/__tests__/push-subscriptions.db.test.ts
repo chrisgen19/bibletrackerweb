@@ -128,6 +128,33 @@ describe("push subscriptions", () => {
   });
 
   it("does not count an endpoint saved under another session as current", async () => {
+    const otherUser = await createTestUser();
+    const otherSession = await createTestSession(otherUser);
+    await savePushSubscription(
+      otherUser,
+      otherSession,
+      input(endpoint, "other-p256dh", "other-auth"),
+      null,
+    );
+
+    expect(
+      await refreshPushSubscription(
+        sessionId,
+        input(endpoint, "mine-p256dh", "mine-auth"),
+      ),
+    ).toBe(false);
+
+    expect(
+      await db.pushSubscription.findUniqueOrThrow({ where: { endpoint } }),
+    ).toMatchObject({
+      userId: otherUser,
+      sessionId: otherSession,
+      p256dh: "other-p256dh",
+      auth: "other-auth",
+    });
+  });
+
+  it("refresh never creates a row for an unknown endpoint", async () => {
     const unknown = `https://push.example.test/${createId()}`;
 
     expect(await refreshPushSubscription(sessionId, input(unknown))).toBe(

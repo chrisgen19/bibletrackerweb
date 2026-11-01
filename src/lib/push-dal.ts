@@ -12,7 +12,8 @@ export interface StoredPushSubscription {
 /**
  * Stores a browser's push subscription under the login session that saved it. An endpoint
  * identifies one browser profile, so saving an existing one reassigns it (new user,
- * session and keys): a shared device follows whoever signed in last.
+ * session and keys): a shared device follows whoever signed in last. `userId` and
+ * `sessionId` must come from the same Better Auth session.
  */
 export async function savePushSubscription(
   userId: string,
