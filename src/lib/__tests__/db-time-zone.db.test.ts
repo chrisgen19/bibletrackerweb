@@ -1,9 +1,15 @@
 // Prisma's pg adapter sends a date as UTC wall-clock time with no offset, so Postgres reads
-// it in the session's time zone. Only a server whose zone is not UTC can fail this test.
-import { describe, expect, it } from "vitest";
+// it in the session's time zone.
+import { describe, expect, it, vi } from "vitest";
 
 import { db } from "@/lib/db";
 import { createTestUser } from "@/test/factories";
+
+// Connects as if the server ran in another zone, so this fails on a UTC server too if
+// `src/lib/db.ts` stops pinning UTC: `pg` prefers its explicit options over PGOPTIONS.
+vi.hoisted(() => {
+  process.env.PGOPTIONS = "-c TimeZone=Asia/Manila";
+});
 
 describe("stored timestamps", () => {
   it("keeps the instant it was given, whatever zone the server runs in", async () => {
