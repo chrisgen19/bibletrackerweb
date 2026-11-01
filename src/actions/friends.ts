@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import * as commands from "@/features/friends/commands/commands";
 import type {
   DismissNudgesInput,
@@ -13,6 +15,7 @@ import type {
   InviteCodeResult,
   SearchResult,
 } from "@/features/friends/commands/results";
+import { pushCheers } from "@/lib/push-sender";
 import { requireUser } from "@/lib/session";
 
 // Server Actions are public POST endpoints: each one checks the session itself, and the
@@ -88,7 +91,10 @@ export async function resetInvite(): Promise<InviteCodeResult> {
 
 export async function nudgeFriend(input: TargetInput): Promise<FriendsResult> {
   const user = await requireUser();
-  return commands.nudgeFriendFor(user.id, input);
+  const result = await commands.nudgeFriendFor(user.id, input);
+  // The command validated `input.userId` when it returns ok. pushCheers never throws.
+  if (result.ok) after(() => pushCheers(input.userId));
+  return result;
 }
 
 export async function dismissNudges(
