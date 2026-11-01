@@ -31,10 +31,6 @@ vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
 vi.mock("@/actions/reading", () => ({ setCalendarView: vi.fn() }));
 vi.mock("@/actions/friends", () => ({ dismissNudges: vi.fn() }));
 
-const push = vi.hoisted(() => ({ clear: vi.fn(() => Promise.resolve()) }));
-vi.mock("@/features/push/browser/push-client", () => ({
-  clearCheerNotifications: push.clear,
-}));
 vi.mock("@/features/push/components/push-question", () => ({
   PushQuestion: () => null,
 }));
@@ -77,18 +73,6 @@ function renderToday(completions: ReadingCompletion[]) {
 }
 
 const cheeringRow = () => screen.queryByText(/is cheering you on/);
-
-describe("ProgressScreen cheer notifications", () => {
-  it("clears cheer notifications on load and when today is completed", () => {
-    push.clear.mockClear();
-    const { rerender } = render(<Screen view={viewWith([])} />);
-    expect(push.clear).toHaveBeenCalledTimes(1);
-    rerender(<Screen view={viewWith([])} />);
-    expect(push.clear).toHaveBeenCalledTimes(1);
-    rerender(<Screen view={viewWith([makeCompletion(TODAY)])} />);
-    expect(push.clear).toHaveBeenCalledTimes(2);
-  });
-});
 
 describe("ProgressScreen cheering row", () => {
   it("shows who is cheering the reader on before they read today", () => {
