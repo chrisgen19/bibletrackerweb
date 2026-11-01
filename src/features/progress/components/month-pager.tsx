@@ -36,9 +36,19 @@ export function MonthPager({
   const swipe = useSwipe(viewport, onStepMonth);
   const pages = [monthWindow.previous, monthWindow.current, monthWindow.next];
 
-  // Sized to the tallest of the three, so a six-row neighbour is not clipped mid-swipe.
+  // Fits the month showing, plus the neighbour a swipe is bringing in: no blank row at
+  // rest beside a taller month, and a six-row neighbour is not clipped mid-swipe.
+  const incoming =
+    swipe.direction < 0
+      ? monthWindow.previous
+      : swipe.direction > 0
+        ? monthWindow.next
+        : monthWindow.current;
   const height = getGridHeight(
-    Math.max(...pages.map((page) => page.calendar.weeks.length)),
+    Math.max(
+      monthWindow.current.calendar.weeks.length,
+      incoming.calendar.weeks.length,
+    ),
   );
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {

@@ -132,5 +132,14 @@ export function useSwipe(
       ? `translateX(calc(-100% / 3 + ${offset}px))`
       : `translateX(calc(-100% / 3 * ${1 + settling}))`;
 
-  return { handlers, onTransitionEnd, transform, animating: settling !== null };
+  /** The neighbour coming into view: -1, +1, or 0 when only the middle page shows. */
+  const direction = settling ?? (offset < 0 ? 1 : offset > 0 ? -1 : 0);
+
+  return {
+    handlers,
+    onTransitionEnd,
+    transform,
+    animating: settling !== null,
+    direction,
+  };
 }

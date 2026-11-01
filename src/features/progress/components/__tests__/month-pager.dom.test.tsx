@@ -22,6 +22,7 @@ import {
 import { calculateMonthStatistics } from "../../domain/month-statistics";
 import type { MonthProgress } from "../../hooks/use-month-progress";
 import type { MonthWindow } from "../../hooks/use-month-window";
+import { getGridHeight } from "../calendar-grid";
 import { MonthPager } from "../month-pager";
 
 const TODAY: DateKey = "2026-08-09";
@@ -188,6 +189,72 @@ describe("MonthPager", () => {
     fireEvent.keyDown(screen.getByLabelText(/^Today, /), { key: "ArrowRight" });
 
     expect(onStepMonth).not.toHaveBeenCalled();
+  });
+
+  describe("height", () => {
+    // Sundays first: Aug 2026 has 6 rows, Sep and Oct have 5, Jun has 5 and May has 6.
+    const SEPTEMBER = { year: 2026, month: 9 };
+    const JUNE = { year: 2026, month: 6 };
+    const height = () => pager().style.height;
+
+    /** A drag held at `dx`, not yet released. */
+    function drag(dx: number) {
+      const at = (x: number) => ({
+        clientX: 200 + x,
+        clientY: 100,
+        pointerId: 1,
+        button: 0,
+      });
+      fireEvent.pointerDown(pager(), at(0));
+      fireEvent.pointerMove(pager(), at(dx));
+    }
+
+    it("fits the month at rest, even next to a taller one", () => {
+      renderPager(SEPTEMBER);
+
+      expect(height()).toBe(`${getGridHeight(5)}px`);
+    });
+
+    it("grows while dragging toward a taller month, so its last row is not clipped", () => {
+      renderPager(SEPTEMBER);
+
+      drag(100);
+
+      expect(height()).toBe(`${getGridHeight(6)}px`);
+    });
+
+    it("ignores the taller month on the side not being dragged toward", () => {
+      renderPager(SEPTEMBER);
+
+      drag(-100);
+
+      expect(height()).toBe(`${getGridHeight(5)}px`);
+    });
+
+    it("stays tall while the slide onto a taller month finishes", () => {
+      renderPager(SEPTEMBER);
+
+      swipe(WIDTH * 0.9, 1_500);
+
+      expect(height()).toBe(`${getGridHeight(6)}px`);
+    });
+
+    it("keeps the current month's height while dragging toward a shorter one", () => {
+      renderPager({ year: 2026, month: 5 });
+
+      drag(-100);
+
+      expect(height()).toBe(`${getGridHeight(6)}px`);
+    });
+
+    it("returns to the month's height after sliding back", () => {
+      renderPager(JUNE);
+
+      swipe(WIDTH * 0.1, 1_500);
+      settle();
+
+      expect(height()).toBe(`${getGridHeight(5)}px`);
+    });
   });
 
   it("does not open the day a swipe ends on", () => {
