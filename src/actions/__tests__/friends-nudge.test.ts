@@ -15,13 +15,16 @@ vi.mock("next/server", () => ({ after }));
 
 import { nudgeFriend } from "../friends";
 
+/** Callbacks handed to after(): captured, not run, so each test decides when they run. */
+let scheduled: Array<() => Promise<void>>;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  scheduled = [];
   requireUser.mockResolvedValue({ id: "user-1" });
   pushCheers.mockResolvedValue(undefined);
-  // Run the callback immediately; swallow its rejection as the real after() would.
   after.mockImplementation((callback: () => Promise<void>) => {
-    void Promise.resolve(callback()).catch(() => undefined);
+    scheduled.push(callback);
   });
 });
 
@@ -29,7 +32,9 @@ describe("nudgeFriend", () => {
   it("schedules a push only when the nudge was sent", async () => {
     nudgeFriendFor.mockResolvedValue({ ok: true });
     expect(await nudgeFriend({ userId: "friend-1" })).toEqual({ ok: true });
-    expect(pushCheers).toHaveBeenCalledTimes(1);
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(pushCheers).not.toHaveBeenCalled();
+    await scheduled[0]?.();
     expect(pushCheers).toHaveBeenCalledWith("friend-1");
 
     for (const error of ["already-nudged", "already-read", "not-found"]) {
@@ -45,10 +50,17 @@ describe("nudgeFriend", () => {
     }
   });
 
-  it("returns ok even when the push throws", async () => {
+  it("returns ok without waiting for the push, even when it throws", async () => {
     nudgeFriendFor.mockResolvedValue({ ok: true });
     pushCheers.mockRejectedValue(new Error("push service down"));
+
+    // The result is back before the scheduled callback has run: the action never waits on it.
     expect(await nudgeFriend({ userId: "friend-1" })).toEqual({ ok: true });
-    expect(pushCheers).toHaveBeenCalledTimes(1);
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(pushCheers).not.toHaveBeenCalled();
+
+    // Only the scheduled callback sees the failure; nothing escapes unhandled.
+    await expect(scheduled[0]?.()).rejects.toThrow("push service down");
+    expect(pushCheers).toHaveBeenCalledWith("friend-1");
   });
 });
