@@ -11,7 +11,10 @@ import {
   type StoredPushSubscription,
 } from "@/lib/push-dal";
 
-const TTL_SECONDS = 86_400;
+// How long the push service holds a cheer for an unreachable phone: 4 hours covers a
+// commute or a meeting without signal, but a phone that was off overnight does not wake
+// up to yesterday's cheer (one already read or dismissed elsewhere can't be recalled).
+const PUSH_TTL_SECONDS = 4 * 60 * 60;
 // Keeps a hung push service from holding the after() work open.
 const SEND_TIMEOUT_MS = 10_000;
 
@@ -35,7 +38,7 @@ async function sendTo(
       },
       payload,
       {
-        TTL: TTL_SECONDS,
+        TTL: PUSH_TTL_SECONDS,
         timeout: SEND_TIMEOUT_MS,
         // Per send, not at module load: web-push validates the keys when they are set.
         vapidDetails: {

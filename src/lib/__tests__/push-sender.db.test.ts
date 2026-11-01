@@ -119,7 +119,7 @@ describe("pushCheers", () => {
         },
         expect.any(String),
         {
-          TTL: 86_400,
+          TTL: 14_400,
           timeout: 10_000,
           vapidDetails: {
             subject: CONFIG.subject,
