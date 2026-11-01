@@ -2,7 +2,13 @@
 // the CHECK constraints, unique pair and cascades, exercised with raw `db` writes.
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { isUniqueViolation } from "@/lib/dal";
 import { db } from "@/lib/db";
+import {
+  acceptFriendRequest,
+  removeFriend,
+  sendFriendRequest,
+} from "@/lib/friends-dal";
 import { createTestUser } from "@/test/factories";
 
 /** A valid 10-character code, unique per call (the code column is unique across tests). */
@@ -128,5 +134,61 @@ describe("cascades", () => {
     await db.user.delete({ where: { id: lo } });
     expect(await db.friendInvite.count({ where: { userId: lo } })).toBe(0);
     expect(await db.friendship.count({ where: { userBId: hi } })).toBe(0);
+  });
+});
+
+describe("friend_nudge", () => {
+  const day = new Date("2026-11-01T00:00:00.000Z");
+  const nextDay = new Date("2026-11-02T00:00:00.000Z");
+
+  async function makeFriendship(): Promise<string> {
+    await sendFriendRequest(a, b);
+    await acceptFriendRequest(b, a);
+    const row = await db.friendship.findFirstOrThrow({
+      where: { userAId: lo, userBId: hi },
+    });
+    return row.id;
+  }
+
+  function nudge(friendshipId: string, localDate: Date) {
+    return db.friendNudge.create({
+      data: { friendshipId, senderId: a, receiverId: b, localDate },
+    });
+  }
+
+  it("rejects a second nudge for the same sender, receiver and day", async () => {
+    const friendshipId = await makeFriendship();
+    await nudge(friendshipId, day);
+    const error = await nudge(friendshipId, day).catch((e: unknown) => e);
+    expect(isUniqueViolation(error)).toBe(true);
+  });
+
+  it("allows the same pair on another day", async () => {
+    const friendshipId = await makeFriendship();
+    await nudge(friendshipId, day);
+    await expect(nudge(friendshipId, nextDay)).resolves.toBeDefined();
+  });
+
+  it("deletes nudges when the friendship is removed", async () => {
+    const friendshipId = await makeFriendship();
+    await nudge(friendshipId, day);
+    await removeFriend(a, b);
+    expect(await db.friendNudge.count({ where: { friendshipId } })).toBe(0);
+  });
+
+  it("deletes nudges when the sender is deleted", async () => {
+    const friendshipId = await makeFriendship();
+    await nudge(friendshipId, day);
+    await db.user.delete({ where: { id: a } });
+    expect(await db.friendNudge.count({ where: { friendshipId } })).toBe(0);
+  });
+
+  it("rejects a nudge to yourself", async () => {
+    const friendshipId = await makeFriendship();
+    await expect(
+      db.friendNudge.create({
+        data: { friendshipId, senderId: a, receiverId: a, localDate: day },
+      }),
+    ).rejects.toThrow();
   });
 });
