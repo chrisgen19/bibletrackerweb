@@ -321,7 +321,8 @@ The "Not now" count is **not** stored on the server (per device, see above).
   `Dockerfile` runs `next build` with hard-coded stand-ins and no build args, so a
   `NEXT_PUBLIC_` key would be baked in empty; and client components cannot import
   `env.ts`, which validates the whole server environment on load. Instead, the server
-  pages (`src/app/(app)/page.tsx`, the settings page and its `@sheet` twin) read the
+  pages (`src/app/(app)/page.tsx`, `src/app/(app)/settings/page.tsx`; the `@sheet`
+  settings slot renders nothing) and the `(app)` layout read the
   public key from `env` and pass it down as a prop, together with "push is configured".
   Every page already renders per request, so no Dockerfile change and no rebuild after
   setting the keys.
