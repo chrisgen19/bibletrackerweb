@@ -274,4 +274,5 @@ the shape*, the builder may adjust names:
 - **2c. Web push**, as described in the 2a spec's follow-ups: service worker, VAPID keys,
   subscription table, permission prompt, sending library (needs package approval). It hooks
   in after a nudge is stored.
-- Update the phase 1 spec's "Visibility before accepting" table (still open from 2a).
+- ~~Update the phase 1 spec's "Visibility before accepting" table (still open from 2a).~~
+  Done in #42.
