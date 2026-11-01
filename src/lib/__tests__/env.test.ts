@@ -130,10 +130,11 @@ describe("parseEnv: Google sign-in", () => {
 });
 
 describe("parseEnv: web push", () => {
-  // A pair from `npx web-push generate-vapid-keys`, generated for these tests only.
-  const TEST_PUBLIC_KEY =
-    "BDT_w0lTM-eQGxfTYOV3C9O7KgR4uuYjEJKs8nYK_ABBkeQNYr9z9uIBcC__11Zd-HmJcOV6w5MuqTXE9UAA5L4";
-  const TEST_PRIVATE_KEY = "BSXbDVA5kT3dXpQkRv5DdjEP8wMFscurNfytIVctJjA";
+  // Obviously fake, low-entropy keys of the right shape (65 and 32 bytes, base64url).
+  // parseEnv checks format and length only, so no real key pair is needed here, and
+  // none is committed for secret scanners to flag.
+  const TEST_PUBLIC_KEY = Buffer.alloc(65, 4).toString("base64url");
+  const TEST_PRIVATE_KEY = Buffer.alloc(32, 7).toString("base64url");
   const VAPID = {
     VAPID_PUBLIC_KEY: TEST_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: TEST_PRIVATE_KEY,
