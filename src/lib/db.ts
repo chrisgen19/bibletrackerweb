@@ -10,7 +10,12 @@ import { env } from "@/lib/env";
  * the data access layer, so ownership checks cannot be skipped by accident.
  */
 function createPrismaClient(): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_URL,
+    // The adapter sends dates as UTC wall-clock time with no offset, and Postgres reads
+    // those in the session's zone. Pinned so a server in another zone stores true instants.
+    options: "-c TimeZone=UTC",
+  });
   return new PrismaClient({ adapter });
 }
 
