@@ -1,7 +1,7 @@
 # Friends: nudge and in-app banner (phase 2b)
 
 Date: 2026-11-01
-Status: design
+Status: implemented
 
 ## Why
 
