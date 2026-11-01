@@ -99,8 +99,9 @@ export function useSwipe(
       dragging.current = false;
       swallowClick.current = true;
       const [before, last] = recent.current;
-      const elapsed =
-        before === undefined || last === undefined ? 0 : last.t - before.t;
+      // Up to the release, not the last move: no move arrives while a finger holds still,
+      // and a pause means the finger stopped, so it must not read as a flick.
+      const elapsed = before === undefined ? 0 : Date.now() - before.t;
       const velocity =
         before === undefined || last === undefined || elapsed <= 0
           ? 0

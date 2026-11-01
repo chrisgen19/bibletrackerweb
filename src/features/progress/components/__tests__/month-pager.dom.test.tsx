@@ -87,8 +87,8 @@ function renderPager(key: MonthKey = { year: 2026, month: 8 }) {
 const pager = () => screen.getByRole("region");
 const track = () => pager().firstElementChild as HTMLElement;
 
-/** A horizontal drag of `dx` pixels taking `ms`, released where it ends. */
-function swipe(dx: number, ms: number) {
+/** A horizontal drag of `dx` pixels taking `ms`, released where it ends after `holdMs`. */
+function swipe(dx: number, ms: number, holdMs = 0) {
   const now = vi.spyOn(Date, "now");
   const at = (x: number) => ({
     clientX: 200 + x,
@@ -102,6 +102,7 @@ function swipe(dx: number, ms: number) {
   fireEvent.pointerMove(pager(), at(dx / 2));
   now.mockReturnValue(1_000 + ms);
   fireEvent.pointerMove(pager(), at(dx));
+  now.mockReturnValue(1_000 + ms + holdMs);
   fireEvent.pointerUp(pager(), at(dx));
   now.mockRestore();
 }
@@ -168,6 +169,24 @@ describe("MonthPager", () => {
     const { onStepMonth } = renderPager();
 
     swipe(-60, 100);
+    settle();
+
+    expect(onStepMonth).toHaveBeenCalledWith(1);
+  });
+
+  it("slides back when a quick drag stops before it is released", () => {
+    const { onStepMonth } = renderPager();
+
+    swipe(-60, 100, 350);
+    settle();
+
+    expect(onStepMonth).not.toHaveBeenCalled();
+  });
+
+  it("still changes month past halfway when the drag stops before release", () => {
+    const { onStepMonth } = renderPager();
+
+    swipe(-WIDTH * 0.9, 1_500, 350);
     settle();
 
     expect(onStepMonth).toHaveBeenCalledWith(1);
