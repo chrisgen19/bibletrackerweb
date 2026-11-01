@@ -23,7 +23,9 @@ export function MonthNavigator({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-title" aria-live="polite">
+        {/* Wraps instead of truncating: `nowrap` adds the full title to the card's minimum
+            width, which pushes the page sideways on a narrow phone. */}
+        <h2 className="text-title" aria-live="polite">
           {title}
         </h2>
         {onReturnToToday === undefined ? null : (
