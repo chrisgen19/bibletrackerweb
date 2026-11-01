@@ -29,7 +29,7 @@ import {
 
 const USER = { id: "user-1", name: "R", email: "r@example.test", image: null };
 const SUB = {
-  endpoint: "https://push.example.test/x",
+  endpoint: "https://fcm.googleapis.com/fcm/send/x",
   keys: { p256dh: "p", auth: "a" },
 };
 

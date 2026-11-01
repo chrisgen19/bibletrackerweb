@@ -41,7 +41,7 @@ let endpoint: string;
 beforeEach(async () => {
   userId = await createTestUser();
   sessionId = await createTestSession(userId);
-  endpoint = `https://push.example.test/${createId()}`;
+  endpoint = `https://fcm.googleapis.com/fcm/send/${createId()}`;
 });
 
 describe("push subscriptions", () => {
@@ -155,7 +155,7 @@ describe("push subscriptions", () => {
   });
 
   it("refresh never creates a row for an unknown endpoint", async () => {
-    const unknown = `https://push.example.test/${createId()}`;
+    const unknown = `https://fcm.googleapis.com/fcm/send/${createId()}`;
 
     expect(await refreshPushSubscription(sessionId, input(unknown))).toBe(
       false,
@@ -188,7 +188,7 @@ describe("push subscriptions", () => {
       userId,
       new Date(now.getTime() - 1000),
     );
-    const expiredEndpoint = `https://push.example.test/${createId()}`;
+    const expiredEndpoint = `https://fcm.googleapis.com/fcm/send/${createId()}`;
     await savePushSubscription(userId, sessionId, input(endpoint), null);
     await savePushSubscription(
       userId,

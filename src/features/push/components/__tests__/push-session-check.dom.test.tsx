@@ -14,7 +14,7 @@ const KEY =
 const IPHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
 const SUBSCRIPTION_JSON = {
-  endpoint: "https://push.example.com/device-1",
+  endpoint: "https://fcm.googleapis.com/fcm/send/device-1",
   keys: { p256dh: "p256dh-key", auth: "auth-key" },
 };
 

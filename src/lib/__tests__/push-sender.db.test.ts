@@ -59,7 +59,7 @@ async function addDevice(
   expiresAt?: Date,
   suffix = "",
 ): Promise<string> {
-  const endpoint = `https://push.example.test/${createId()}${suffix}`;
+  const endpoint = `https://fcm.googleapis.com/fcm/send/${createId()}${suffix}`;
   const sessionId = await createTestSession(userId, expiresAt);
   await savePushSubscription(
     userId,

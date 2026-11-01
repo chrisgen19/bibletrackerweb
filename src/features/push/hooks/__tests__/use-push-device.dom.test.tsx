@@ -13,7 +13,7 @@ const KEY =
   "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
 const IPHONE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
-const ENDPOINT = "https://push.example.com/device-1";
+const ENDPOINT = "https://fcm.googleapis.com/fcm/send/device-1";
 const SUBSCRIPTION_JSON = {
   endpoint: ENDPOINT,
   keys: { p256dh: "p256dh-key", auth: "auth-key" },

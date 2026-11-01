@@ -38,7 +38,7 @@ let endpoint: string;
 beforeEach(async () => {
   userId = await createTestUser();
   sessionId = await createTestSession(userId);
-  endpoint = `https://push.example.test/${createId()}`;
+  endpoint = `https://fcm.googleapis.com/fcm/send/${createId()}`;
 });
 
 describe("savePushSubscriptionFor", () => {
@@ -51,13 +51,25 @@ describe("savePushSubscriptionFor", () => {
   });
 
   it("rejects a non-https endpoint as invalid-input", async () => {
-    const http = "http://push.example.test/abc";
+    const http = "http://fcm.googleapis.com/abc";
     expect(
       await savePushSubscriptionFor(userId, sessionId, input(http), null),
     ).toEqual({ ok: false, error: "invalid-input" });
     expect(await db.pushSubscription.count({ where: { endpoint: http } })).toBe(
       0,
     );
+  });
+});
+
+describe("savePushSubscriptionFor endpoint host", () => {
+  it("rejects a non push-service endpoint as invalid-input and stores nothing", async () => {
+    const other = "https://push.example.test/abc";
+    expect(
+      await savePushSubscriptionFor(userId, sessionId, input(other), null),
+    ).toEqual({ ok: false, error: "invalid-input" });
+    expect(
+      await db.pushSubscription.count({ where: { endpoint: other } }),
+    ).toBe(0);
   });
 });
 
