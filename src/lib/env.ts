@@ -42,6 +42,9 @@ const envSchema = z
     }),
     GOOGLE_CLIENT_ID: optionalString,
     GOOGLE_CLIENT_SECRET: optionalString,
+    VAPID_PUBLIC_KEY: optionalString,
+    VAPID_PRIVATE_KEY: optionalString,
+    VAPID_SUBJECT: optionalString,
   })
   .superRefine((env, ctx) => {
     if (
@@ -69,6 +72,32 @@ const envSchema = z
         ],
         message:
           "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET together, or leave both empty.",
+      });
+    }
+    // Web push needs the full VAPID set; a partial one would fail on the first send.
+    const vapid = [
+      ["VAPID_PUBLIC_KEY", env.VAPID_PUBLIC_KEY],
+      ["VAPID_PRIVATE_KEY", env.VAPID_PRIVATE_KEY],
+      ["VAPID_SUBJECT", env.VAPID_SUBJECT],
+    ] as const;
+    const missing = vapid.filter(([, value]) => value === undefined);
+    const [firstMissing] = missing;
+    if (firstMissing && missing.length < vapid.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: [firstMissing[0]],
+        message:
+          "Set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT together, or leave all three empty.",
+      });
+    }
+    if (
+      env.VAPID_SUBJECT !== undefined &&
+      !/^(mailto:|https:)/.test(env.VAPID_SUBJECT)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["VAPID_SUBJECT"],
+        message: "VAPID_SUBJECT must start with mailto: or https:.",
       });
     }
   });

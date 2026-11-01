@@ -128,3 +128,49 @@ describe("parseEnv: Google sign-in", () => {
     );
   });
 });
+
+describe("parseEnv: web push", () => {
+  const VAPID = {
+    VAPID_PUBLIC_KEY: "public-key",
+    VAPID_PRIVATE_KEY: "private-key",
+    VAPID_SUBJECT: "mailto:hello@example.test",
+  };
+
+  it("accepts no VAPID variables", () => {
+    const env = parseEnv(source());
+    expect(env.VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+    expect(env.VAPID_SUBJECT).toBeUndefined();
+  });
+
+  it("accepts all three", () => {
+    const env = parseEnv(source(VAPID));
+    expect(env.VAPID_PUBLIC_KEY).toBe("public-key");
+    expect(env.VAPID_PRIVATE_KEY).toBe("private-key");
+    expect(env.VAPID_SUBJECT).toBe("mailto:hello@example.test");
+  });
+
+  it("rejects a partial set and names the missing variable", () => {
+    expect(() =>
+      parseEnv(source({ ...VAPID, VAPID_SUBJECT: undefined })),
+    ).toThrow(/VAPID_SUBJECT/);
+  });
+
+  it("rejects a subject that is not mailto: or https:", () => {
+    expect(() =>
+      parseEnv(source({ ...VAPID, VAPID_SUBJECT: "hello@example.test" })),
+    ).toThrow(/VAPID_SUBJECT/);
+  });
+
+  it("treats empty strings as unset", () => {
+    const env = parseEnv(
+      source({
+        VAPID_PUBLIC_KEY: "",
+        VAPID_PRIVATE_KEY: "",
+        VAPID_SUBJECT: "",
+      }),
+    );
+    expect(env.VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(env.VAPID_SUBJECT).toBeUndefined();
+  });
+});
