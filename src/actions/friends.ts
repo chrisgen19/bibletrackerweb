@@ -2,6 +2,7 @@
 
 import * as commands from "@/features/friends/commands/commands";
 import type {
+  DismissNudgesInput,
   InviteInput,
   SearchInput,
   SetUsernameInput,
@@ -83,4 +84,16 @@ export async function getInviteCode(): Promise<InviteCodeResult> {
 export async function resetInvite(): Promise<InviteCodeResult> {
   const user = await requireUser();
   return commands.resetInviteFor(user.id);
+}
+
+export async function nudgeFriend(input: TargetInput): Promise<FriendsResult> {
+  const user = await requireUser();
+  return commands.nudgeFriendFor(user.id, input);
+}
+
+export async function dismissNudges(
+  input: DismissNudgesInput,
+): Promise<FriendsResult> {
+  const user = await requireUser();
+  return commands.dismissNudgesFor(user.id, input);
 }
