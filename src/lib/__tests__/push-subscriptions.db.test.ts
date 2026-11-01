@@ -6,6 +6,7 @@ import {
   deletePushSubscription,
   deletePushSubscriptionByEndpoint,
   getLivePushSubscriptions,
+  MAX_PUSH_SUBSCRIPTIONS,
   refreshPushSubscription,
   savePushSubscription,
 } from "@/lib/push-dal";
@@ -204,5 +205,68 @@ describe("push subscriptions", () => {
     ]);
     expect(await countByEndpoint(expiredEndpoint)).toBe(0);
     expect(await countByEndpoint(endpoint)).toBe(1);
+  });
+});
+
+const pick = (list: readonly string[], index: number): string => {
+  const value = list[index];
+  if (value === undefined) throw new Error(`No seeded endpoint at ${index}`);
+  return value;
+};
+
+describe("push subscription cap", () => {
+  /** `count` rows for `owner`, `updatedAt` spaced a minute apart, oldest first. */
+  async function seed(owner: string, session: string, count: number) {
+    const base = Date.now() - 60 * 60 * 1000;
+    const endpoints: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const ep = `https://fcm.googleapis.com/fcm/send/${createId()}`;
+      endpoints.push(ep);
+      await db.pushSubscription.create({
+        data: {
+          userId: owner,
+          sessionId: session,
+          endpoint: ep,
+          p256dh: "k",
+          auth: "a",
+          updatedAt: new Date(base + i * 60 * 1000),
+        },
+      });
+    }
+    return endpoints;
+  }
+
+  const countFor = (owner: string) =>
+    db.pushSubscription.count({ where: { userId: owner } });
+
+  it("keeps ten and removes the oldest when an eleventh is saved", async () => {
+    const seeded = await seed(userId, sessionId, MAX_PUSH_SUBSCRIPTIONS);
+
+    await savePushSubscription(userId, sessionId, input(endpoint), null);
+
+    expect(await countFor(userId)).toBe(MAX_PUSH_SUBSCRIPTIONS);
+    expect(await countByEndpoint(pick(seeded, 0))).toBe(0);
+    expect(await countByEndpoint(pick(seeded, 1))).toBe(1);
+    expect(await countByEndpoint(endpoint)).toBe(1);
+  });
+
+  it("leaves another user's rows untouched", async () => {
+    const otherUser = await createTestUser();
+    const otherSession = await createTestSession(otherUser);
+    await seed(otherUser, otherSession, MAX_PUSH_SUBSCRIPTIONS);
+    await seed(userId, sessionId, MAX_PUSH_SUBSCRIPTIONS);
+
+    await savePushSubscription(userId, sessionId, input(endpoint), null);
+
+    expect(await countFor(otherUser)).toBe(MAX_PUSH_SUBSCRIPTIONS);
+  });
+
+  it("removes nothing when an existing endpoint is saved again", async () => {
+    const seeded = await seed(userId, sessionId, MAX_PUSH_SUBSCRIPTIONS);
+
+    await savePushSubscription(userId, sessionId, input(pick(seeded, 0)), null);
+
+    expect(await countFor(userId)).toBe(MAX_PUSH_SUBSCRIPTIONS);
+    expect(await countByEndpoint(pick(seeded, 0))).toBe(1);
   });
 });

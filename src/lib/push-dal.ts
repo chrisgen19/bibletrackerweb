@@ -9,11 +9,17 @@ export interface StoredPushSubscription {
   readonly auth: string;
 }
 
+/** Most sign-ups one user keeps; a cheer is sent to every one of them. */
+export const MAX_PUSH_SUBSCRIPTIONS = 10;
+
 /**
  * Stores a browser's push subscription under the login session that saved it. An endpoint
  * identifies one browser profile, so saving an existing one reassigns it (new user,
  * session and keys): a shared device follows whoever signed in last. `userId` and
  * `sessionId` must come from the same Better Auth session.
+ *
+ * A user keeps at most `MAX_PUSH_SUBSCRIPTIONS`: the oldest are removed after saving, so a
+ * new phone always works instead of being refused.
  */
 export async function savePushSubscription(
   userId: string,
@@ -28,10 +34,24 @@ export async function savePushSubscription(
     auth: input.keys.auth,
     userAgent,
   };
-  await db.pushSubscription.upsert({
-    where: { endpoint: input.endpoint },
-    create: { endpoint: input.endpoint, ...fields },
-    update: fields,
+  await db.$transaction(async (tx) => {
+    await tx.pushSubscription.upsert({
+      where: { endpoint: input.endpoint },
+      create: { endpoint: input.endpoint, ...fields },
+      update: fields,
+    });
+    // The row just saved has the newest updatedAt, so it is always among those kept.
+    const stale = await tx.pushSubscription.findMany({
+      where: { userId },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      skip: MAX_PUSH_SUBSCRIPTIONS,
+      select: { id: true },
+    });
+    if (stale.length > 0) {
+      await tx.pushSubscription.deleteMany({
+        where: { id: { in: stale.map((row) => row.id) } },
+      });
+    }
   });
 }
 
