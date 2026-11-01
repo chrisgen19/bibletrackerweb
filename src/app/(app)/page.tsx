@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ProgressScreen } from "@/features/progress/components/progress-screen";
 import { getActiveReadingPlan, getCalendarViewPreference } from "@/lib/dal";
 import { getOpenNudges } from "@/lib/friends-dal";
+import { pushConfig } from "@/lib/push-config";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Your Reading" };
@@ -20,6 +21,7 @@ export default async function ProgressPage() {
       readerId={user.id}
       savedCalendarView={savedCalendarView}
       initialNudges={initialNudges}
+      vapidPublicKey={pushConfig?.publicKey ?? null}
     />
   );
 }

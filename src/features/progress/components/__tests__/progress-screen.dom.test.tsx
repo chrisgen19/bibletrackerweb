@@ -31,6 +31,14 @@ vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
 vi.mock("@/actions/reading", () => ({ setCalendarView: vi.fn() }));
 vi.mock("@/actions/friends", () => ({ dismissNudges: vi.fn() }));
 
+const push = vi.hoisted(() => ({ clear: vi.fn(() => Promise.resolve()) }));
+vi.mock("@/features/push/browser/push-client", () => ({
+  clearCheerNotifications: push.clear,
+}));
+vi.mock("@/features/push/components/push-question", () => ({
+  PushQuestion: () => null,
+}));
+
 const TODAY = "2026-10-31";
 const PLAN = makePlan({ startDate: "2026-10-01" });
 const CHEERED: OpenNudges = {
@@ -39,22 +47,48 @@ const CHEERED: OpenNudges = {
   ],
 };
 
-function renderToday(completions: ReadingCompletion[]) {
+const client = new QueryClient();
+
+function Screen({ view }: { view: ReadingView }) {
+  return (
+    <QueryClientProvider client={client}>
+      <ReadingViewProvider view={view}>
+        <ProgressScreen
+          readerId="reader-1"
+          initialNudges={CHEERED}
+          vapidPublicKey={null}
+        />
+      </ReadingViewProvider>
+    </QueryClientProvider>
+  );
+}
+
+function viewWith(completions: ReadingCompletion[]): ReadingView {
   const view = deriveReadingView(
     { plans: [PLAN], activePlan: PLAN, completions },
     TODAY,
   );
   reader.view = view;
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ReadingViewProvider view={view}>
-        <ProgressScreen readerId="reader-1" initialNudges={CHEERED} />
-      </ReadingViewProvider>
-    </QueryClientProvider>,
-  );
+  return view;
+}
+
+function renderToday(completions: ReadingCompletion[]) {
+  render(<Screen view={viewWith(completions)} />);
 }
 
 const cheeringRow = () => screen.queryByText(/is cheering you on/);
+
+describe("ProgressScreen cheer notifications", () => {
+  it("clears cheer notifications on load and when today is completed", () => {
+    push.clear.mockClear();
+    const { rerender } = render(<Screen view={viewWith([])} />);
+    expect(push.clear).toHaveBeenCalledTimes(1);
+    rerender(<Screen view={viewWith([])} />);
+    expect(push.clear).toHaveBeenCalledTimes(1);
+    rerender(<Screen view={viewWith([makeCompletion(TODAY)])} />);
+    expect(push.clear).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe("ProgressScreen cheering row", () => {
   it("shows who is cheering the reader on before they read today", () => {
