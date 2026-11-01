@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("web-push", () => ({
-  default: { setVapidDetails: vi.fn(), sendNotification: vi.fn() },
+  default: { sendNotification: vi.fn() },
 }));
 vi.mock("@/lib/push-config", () => ({
   get pushConfig() {
@@ -118,7 +118,15 @@ describe("pushCheers", () => {
           keys: { p256dh: `p256dh-${endpoint}`, auth: `auth-${endpoint}` },
         },
         expect.any(String),
-        { TTL: 86_400 },
+        {
+          TTL: 86_400,
+          timeout: 10_000,
+          vapidDetails: {
+            subject: CONFIG.subject,
+            publicKey: CONFIG.publicKey,
+            privateKey: CONFIG.privateKey,
+          },
+        },
       );
     }
     const payload = JSON.parse(String(sendNotification.mock.calls[0]?.[1]));
@@ -143,23 +151,31 @@ describe("pushCheers", () => {
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
-  it("sets the VAPID details once, only when configured", async () => {
-    const setVapidDetails = vi.mocked(webpush.setVapidDetails);
+  it("passes vapidDetails in the send options", async () => {
+    await addDevice(receiver);
 
-    vi.resetModules();
-    mocks.config = null;
-    await import("@/lib/push-sender");
-    expect(setVapidDetails).not.toHaveBeenCalled();
+    await pushCheers(receiver);
 
-    vi.resetModules();
-    mocks.config = CONFIG;
-    await import("@/lib/push-sender");
-    expect(setVapidDetails).toHaveBeenCalledTimes(1);
-    expect(setVapidDetails).toHaveBeenCalledWith(
-      CONFIG.subject,
-      CONFIG.publicKey,
-      CONFIG.privateKey,
-    );
+    expect(sendNotification.mock.calls[0]?.[2]).toMatchObject({
+      vapidDetails: {
+        subject: CONFIG.subject,
+        publicKey: CONFIG.publicKey,
+        privateKey: CONFIG.privateKey,
+      },
+    });
+  });
+
+  it("logs only the error name when the lookup itself fails", async () => {
+    await addDevice(receiver);
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      pushCheers(receiver, "not a date" as unknown as Date),
+    ).resolves.toBeUndefined();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("Push failed", expect.any(String));
+    error.mockRestore();
   });
 
   it("does nothing when the receiver has no open nudges", async () => {

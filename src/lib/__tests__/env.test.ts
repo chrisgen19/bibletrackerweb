@@ -130,9 +130,13 @@ describe("parseEnv: Google sign-in", () => {
 });
 
 describe("parseEnv: web push", () => {
+  // A pair from `npx web-push generate-vapid-keys`, generated for these tests only.
+  const TEST_PUBLIC_KEY =
+    "BDT_w0lTM-eQGxfTYOV3C9O7KgR4uuYjEJKs8nYK_ABBkeQNYr9z9uIBcC__11Zd-HmJcOV6w5MuqTXE9UAA5L4";
+  const TEST_PRIVATE_KEY = "BSXbDVA5kT3dXpQkRv5DdjEP8wMFscurNfytIVctJjA";
   const VAPID = {
-    VAPID_PUBLIC_KEY: "public-key",
-    VAPID_PRIVATE_KEY: "private-key",
+    VAPID_PUBLIC_KEY: TEST_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: TEST_PRIVATE_KEY,
     VAPID_SUBJECT: "mailto:hello@example.test",
   };
 
@@ -145,8 +149,8 @@ describe("parseEnv: web push", () => {
 
   it("accepts all three", () => {
     const env = parseEnv(source(VAPID));
-    expect(env.VAPID_PUBLIC_KEY).toBe("public-key");
-    expect(env.VAPID_PRIVATE_KEY).toBe("private-key");
+    expect(env.VAPID_PUBLIC_KEY).toBe(TEST_PUBLIC_KEY);
+    expect(env.VAPID_PRIVATE_KEY).toBe(TEST_PRIVATE_KEY);
     expect(env.VAPID_SUBJECT).toBe("mailto:hello@example.test");
   });
 
@@ -160,6 +164,26 @@ describe("parseEnv: web push", () => {
     expect(() =>
       parseEnv(source({ ...VAPID, VAPID_SUBJECT: "hello@example.test" })),
     ).toThrow(/VAPID_SUBJECT/);
+  });
+
+  it.each([
+    ["VAPID_PUBLIC_KEY", "too-short"],
+    ["VAPID_PUBLIC_KEY", TEST_PRIVATE_KEY],
+    ["VAPID_PRIVATE_KEY", TEST_PUBLIC_KEY],
+    ["VAPID_PRIVATE_KEY", "not base64url!"],
+  ])("rejects a %s of the wrong shape or length", (name, value) => {
+    expect(() => parseEnv(source({ ...VAPID, [name]: value }))).toThrow(
+      new RegExp(`${name} must be the base64url`),
+    );
+  });
+
+  it.each([
+    ["padding", `${TEST_PRIVATE_KEY}=`],
+    ["quotes", `"${TEST_PRIVATE_KEY}"`],
+  ])("rejects a private key with %s", (_label, value) => {
+    expect(() =>
+      parseEnv(source({ ...VAPID, VAPID_PRIVATE_KEY: value })),
+    ).toThrow(/VAPID_PRIVATE_KEY must be the base64url/);
   });
 
   it("treats empty strings as unset", () => {

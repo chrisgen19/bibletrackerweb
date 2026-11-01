@@ -12,14 +12,10 @@ import {
 } from "@/lib/push-dal";
 
 const TTL_SECONDS = 86_400;
+// Keeps a hung push service from holding the after() work open.
+const SEND_TIMEOUT_MS = 10_000;
 
-if (pushConfig) {
-  webpush.setVapidDetails(
-    pushConfig.subject,
-    pushConfig.publicKey,
-    pushConfig.privateKey,
-  );
-}
+type PushConfig = NonNullable<typeof pushConfig>;
 
 const statusOf = (error: unknown): number | undefined =>
   typeof error === "object" && error !== null && "statusCode" in error
@@ -29,6 +25,7 @@ const statusOf = (error: unknown): number | undefined =>
 async function sendTo(
   subscription: StoredPushSubscription,
   payload: string,
+  config: PushConfig,
 ): Promise<void> {
   try {
     await webpush.sendNotification(
@@ -37,7 +34,16 @@ async function sendTo(
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
       },
       payload,
-      { TTL: TTL_SECONDS },
+      {
+        TTL: TTL_SECONDS,
+        timeout: SEND_TIMEOUT_MS,
+        // Per send, not at module load: web-push validates the keys when they are set.
+        vapidDetails: {
+          subject: config.subject,
+          publicKey: config.publicKey,
+          privateKey: config.privateKey,
+        },
+      },
     );
   } catch (error) {
     const statusCode = statusOf(error);
@@ -68,8 +74,14 @@ export async function pushCheers(
     const notification = cheerNotification(senders);
     if (!notification) return;
     const payload = JSON.stringify(notification);
-    await Promise.allSettled(subscriptions.map((s) => sendTo(s, payload)));
-  } catch {
-    console.error("Push failed", undefined);
+    await Promise.allSettled(
+      subscriptions.map((s) => sendTo(s, payload, pushConfig)),
+    );
+  } catch (error) {
+    // The error name only: messages can carry credentials.
+    console.error(
+      "Push failed",
+      error instanceof Error ? error.name : "unknown",
+    );
   }
 }
