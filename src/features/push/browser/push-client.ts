@@ -1,3 +1,4 @@
+import { savePushSubscription } from "@/actions/push";
 import { CHEERS_TAG } from "@/features/push/domain/notification";
 import type { PushSubscriptionInput } from "@/features/push/domain/types";
 
@@ -76,6 +77,21 @@ export const unsubscribeDevice = async (): Promise<string | null> => {
   const { endpoint } = subscription;
   await subscription.unsubscribe();
   return endpoint;
+};
+
+/**
+ * Best effort: saves this browser's existing subscription again under the current login
+ * session. Changing the password replaces every session, which drops this device's push
+ * row. Never throws and never registers or subscribes.
+ */
+export const resaveThisDevice = async (): Promise<void> => {
+  try {
+    const subscription = await currentSubscription();
+    if (subscription === null) return;
+    await savePushSubscription(toSubscriptionInput(subscription));
+  } catch {
+    // The password change already succeeded; cheers can be turned back on in Settings.
+  }
 };
 
 /** Closes any cheer notifications still showing. Does nothing without a registration. */
