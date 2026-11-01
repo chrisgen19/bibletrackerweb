@@ -32,6 +32,10 @@ function setup(todayCompleted = false) {
   return { ...hook, client };
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 beforeEach(() => {
   actions.dismissNudges.mockReset();
   actions.dismissNudges.mockResolvedValue({ ok: true });
@@ -93,7 +97,38 @@ describe("useOpenNudges", () => {
     });
     await waitFor(() => expect(client.isFetching()).toBe(0));
     expect(result.current.senders).toEqual([]);
-    vi.unstubAllGlobals();
+  });
+
+  it("uses the new server data when Today is opened again", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const first = renderHook(
+      () =>
+        useOpenNudges(
+          { senders: [sender("maria", "Maria")] },
+          { todayCompleted: false },
+        ),
+      { wrapper },
+    );
+    expect(first.result.current.senders).toEqual([sender("maria", "Maria")]);
+    first.unmount();
+    // Lets TanStack's zero-delay garbage collection of the unmounted query run.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    const second = renderHook(
+      () =>
+        useOpenNudges(
+          { senders: [sender("ben", "Ben")] },
+          { todayCompleted: false },
+        ),
+      { wrapper },
+    );
+
+    expect(second.result.current.senders).toEqual([sender("ben", "Ben")]);
   });
 
   it("a failed dismiss stays hidden until the next refetch", async () => {

@@ -40,6 +40,9 @@ export function useOpenNudges(
     staleTime: 0,
     refetchOnMount: false,
     refetchOnWindowFocus: true,
+    // Dropped once Today unmounts: the server-rendered `initial` of the next visit is at
+    // least as fresh as anything cached, so a removed friend is never named again.
+    gcTime: 0,
   });
 
   const senders = options.todayCompleted ? NO_SENDERS : data.senders;
