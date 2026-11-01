@@ -23,6 +23,7 @@ describe("which paths the proxy runs on", () => {
     "/day/2026-08-01",
     "/settings",
     "/sign-in",
+    "/friends",
   ])("runs on %s", (url) => {
     expect(doesProxyMatch({ config, url })).toBe(true);
   });
@@ -35,6 +36,7 @@ describe("which paths the proxy runs on", () => {
     "/favicon.ico",
     "/icon.png",
     "/manifest.webmanifest",
+    "/sw.js",
   ])("skips %s", (url) => {
     expect(doesProxyMatch({ config, url })).toBe(false);
   });

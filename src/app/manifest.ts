@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 import { THEME_COLORS } from "@/lib/appearance";
 
 /**
- * Installable, not offline: the app needs the server for every write, so there is no
- * service worker. Colours are the light theme's page background; the browser bar follows
+ * Installable, not offline: the app needs the server for every write. The only service
+ * worker (`public/sw.js`) shows cheer notifications; it caches nothing. Colours are the light theme's page background; the browser bar follows
  * the reader's appearance through the theme-color tags in the root layout.
  */
 export default function manifest(): MetadataRoute.Manifest {
