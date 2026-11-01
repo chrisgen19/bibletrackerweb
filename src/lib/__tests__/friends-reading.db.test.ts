@@ -7,6 +7,7 @@ import {
   getFriendReading,
   removeFriend,
   sendFriendRequest,
+  sendNudge,
 } from "@/lib/friends-dal";
 import { createTestUser, makeDraft } from "@/test/factories";
 
@@ -144,5 +145,25 @@ describe("getFriendReading", () => {
 
     expect(result.kind).toBe("friend");
     expect(JSON.stringify(result)).not.toContain("@example.test");
+  });
+
+  it("reports nudgedToday for the viewer on the friend's day", async () => {
+    await befriend(viewer, friend);
+    const other = await createTestUser({ username: uniqueName("other") });
+    await befriend(other, friend);
+
+    const before = await getFriendReading(viewer, friendName, NOW);
+    expect(before.kind).toBe("friend");
+    expect(before.kind === "friend" && before.reading.nudgedToday).toBe(false);
+
+    expect(await sendNudge(viewer, friend, NOW)).toBe("sent");
+
+    const after = await getFriendReading(viewer, friendName, NOW);
+    expect(after.kind === "friend" && after.reading.nudgedToday).toBe(true);
+    const forOther = await getFriendReading(other, friendName, NOW);
+    expect(forOther.kind).toBe("friend");
+    expect(forOther.kind === "friend" && forOther.reading.nudgedToday).toBe(
+      false,
+    );
   });
 });

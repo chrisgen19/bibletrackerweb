@@ -11,6 +11,8 @@ import {
   type FriendsOverview,
   MAX_FRIENDS,
   MAX_PENDING_OUTGOING,
+  type NudgeOutcome,
+  type OpenNudges,
   type PublicHandle,
   type ReadTodayStatus,
   type Relationship,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { fromDbDate, toDbDate } from "@/lib/db-date";
+import type { DateKey } from "@/utils/date-key";
 import { getTodayDateKeyInZone, isValidTimeZone } from "@/utils/zoned-date-key";
 
 /**
@@ -506,9 +509,9 @@ export async function getFriendReading(
     return { kind: "not-found" };
   }
 
-  const [snapshot, timeZone] = await Promise.all([
+  const [snapshot, day] = await Promise.all([
     getReadingSnapshot(row.id),
-    getTimeZone(row.id),
+    friendDay(viewerId, row.id, now),
   ]);
   return {
     kind: "friend",
@@ -518,9 +521,145 @@ export async function getFriendReading(
       name: row.name,
       image: row.image,
     },
-    reading: {
-      snapshot,
-      today: getTodayDateKeyInZone(timeZone ?? "UTC", now),
-    },
+    reading: { snapshot, ...day },
   };
+}
+
+/** A reader's today in their stored time zone (UTC until they have reported one). */
+async function todayOf(userId: string, now: Date): Promise<DateKey> {
+  return getTodayDateKeyInZone((await getTimeZone(userId)) ?? "UTC", now);
+}
+
+/** The friend's today, and whether the viewer has already nudged them on it. */
+async function friendDay(
+  viewerId: string,
+  friendId: string,
+  now: Date,
+): Promise<{ today: DateKey; nudgedToday: boolean }> {
+  const today = await todayOf(friendId, now);
+  const nudge = await db.friendNudge.findUnique({
+    where: {
+      senderId_receiverId_localDate: {
+        senderId: viewerId,
+        receiverId: friendId,
+        localDate: toDbDate(today),
+      },
+    },
+    select: { id: true },
+  });
+  return { today, nudgedToday: nudge !== null };
+}
+
+// Nudges: one per sender, per receiver, per receiver's day.
+
+/**
+ * Cheers a friend on for their today (the receiver's stored time zone, not the
+ * sender's). Only an accepted friend can be nudged: anyone else, yourself included, is
+ * the same "not-found". A friend who has logged any reading today (extras count) is
+ * "already-read". The unique key on (sender, receiver, day) makes a second nudge that day
+ * "already-nudged" even when two sends race. A friendship removed mid-call fails the
+ * foreign key and is "not-found" too.
+ *
+ * Kept as one function so the push notification (phase 2c) can hook in after the create.
+ */
+export async function sendNudge(
+  senderId: string,
+  receiverId: string,
+  now: Date = new Date(),
+): Promise<NudgeOutcome> {
+  if (senderId === receiverId) return "not-found";
+  const [friendship, today] = await Promise.all([
+    db.friendship.findUnique({
+      where: { userAId_userBId: orderPair(senderId, receiverId) },
+      select: { id: true, status: true },
+    }),
+    todayOf(receiverId, now),
+  ]);
+  if (friendship === null || friendship.status !== "accepted") {
+    return "not-found";
+  }
+  const localDate = toDbDate(today);
+  const reading = await db.readingCompletion.findFirst({
+    where: { userId: receiverId, localDate },
+    select: { id: true },
+  });
+  if (reading !== null) return "already-read";
+  try {
+    await db.friendNudge.create({
+      data: {
+        friendshipId: friendship.id,
+        senderId,
+        receiverId,
+        localDate,
+        createdAt: now,
+      },
+    });
+    return "sent";
+  } catch (error) {
+    if (isUniqueViolation(error)) return "already-nudged";
+    if (isForeignKeyViolation(error)) return "not-found";
+    throw error;
+  }
+}
+
+/**
+ * Who has an open nudge for the reader. A nudge is open until it is dismissed or the
+ * reader logs any reading on its day or later, so the latest completion day closes
+ * every nudge on or before it. Only accepted friends' nudges exist (removing a friend
+ * deletes them), and the friendship filter keeps it that way here. Selects name, photo
+ * and username, never email.
+ */
+export async function getOpenNudges(receiverId: string): Promise<OpenNudges> {
+  const [nudges, latest] = await Promise.all([
+    db.friendNudge.findMany({
+      where: {
+        receiverId,
+        dismissedAt: null,
+        friendship: { status: "accepted" },
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        localDate: true,
+        sender: {
+          select: { id: true, username: true, name: true, image: true },
+        },
+      },
+    }),
+    db.readingCompletion.aggregate({
+      where: { userId: receiverId },
+      _max: { localDate: true },
+    }),
+  ]);
+  const lastRead = latest._max.localDate?.getTime() ?? null;
+
+  const senders: FriendProfile[] = [];
+  const seen = new Set<string>();
+  for (const { localDate, sender } of nudges) {
+    if (lastRead !== null && localDate.getTime() <= lastRead) continue;
+    if (sender.username === null || seen.has(sender.id)) continue;
+    seen.add(sender.id);
+    senders.push({
+      userId: sender.id,
+      username: sender.username,
+      name: sender.name,
+      image: sender.image,
+    });
+  }
+  return { senders };
+}
+
+/**
+ * Dismisses the reader's undismissed nudges from `senderIds` (the senders the banner
+ * showed); returns how many. Only ever touches nudges the reader received.
+ */
+export async function dismissOpenNudges(
+  receiverId: string,
+  senderIds: readonly string[],
+  now: Date = new Date(),
+): Promise<number> {
+  const { count } = await db.friendNudge.updateMany({
+    where: { receiverId, senderId: { in: [...senderIds] }, dismissedAt: null },
+    data: { dismissedAt: now },
+  });
+  return count;
 }

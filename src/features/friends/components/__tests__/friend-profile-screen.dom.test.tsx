@@ -31,16 +31,19 @@ const COMPLETIONS = Array.from({ length: 30 }, (_, i) => i + 1)
 const READING: FriendReading = {
   snapshot: { plans: [PLAN], activePlan: PLAN, completions: COMPLETIONS },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 const NO_PLAN: FriendReading = {
   snapshot: { plans: [], activePlan: null, completions: [] },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 const NO_READINGS: FriendReading = {
   snapshot: { plans: [PLAN], activePlan: PLAN, completions: [] },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 /** Every piece of text a reader or a screen reader meets: visible text and aria-labels. */
