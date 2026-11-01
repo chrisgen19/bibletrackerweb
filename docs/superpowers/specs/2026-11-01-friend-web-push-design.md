@@ -1,7 +1,7 @@
 # Friends: web push for nudges (phase 2c)
 
 Date: 2026-11-01
-Status: approved
+Status: implemented
 
 ## Why
 
