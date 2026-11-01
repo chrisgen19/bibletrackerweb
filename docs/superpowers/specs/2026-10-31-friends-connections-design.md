@@ -76,8 +76,13 @@ next phase and builds on the tables defined here.
 | Incoming request | the receiver | requester's name, photo, `@username` |
 | Search result | any signed-in reader typing an exact username | `@username` only |
 | Sent (outgoing pending) | the requester | `@username` only |
-| Friends list | each friend | name, photo, `@username` |
-| Friend profile `/friends/<username>` | each accepted friend | name, photo, `@username`, and full reading data (see 2026-10-31-friend-profile-design.md) |
+| Friends list | each friend | name, photo, `@username`, and whether they have read today in their own time zone (see 2026-10-31-friend-profile-design.md, "The read-today mark on `/friends`") |
+| Friend profile `/friends/<username>` | each accepted friend | name, photo, `@username`, and full reading detail: the exact chapters read each day, extras and verse spans included, as in the friend's own calendar and history (2026-10-31-friend-profile-design.md, decision 2). Also whether the viewer has already cheered them on today |
+| Nudge row on the Today's reading card | the friend who was nudged | each sender's name (first word) and photo, until the friend reads or dismisses it (see 2026-11-01-friend-nudge-design.md). The sender is never told whether it was seen |
+
+The last three rows are what accepting unlocks. All of it is checked against an accepted
+friendship on the server at the time of the request; pending, declined, cancelled or
+removed friendships see none of it.
 
 The reasoning: the link only reaches people its owner sent it to, and someone sending a
 request has chosen to be seen. Search is the one place a stranger can go looking, so it
