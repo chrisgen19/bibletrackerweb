@@ -21,7 +21,8 @@ export function CheeringRow({ senders, onDismiss }: CheeringRowProps) {
   const plural = names.length > 1 || others;
 
   return (
-    <div className="-mx-5 -mt-5 mb-4 flex items-center gap-3 rounded-t-2xl bg-primary-soft py-1 pr-1 pl-5">
+    // The radius is the card's less its 1px border, so the tint meets the border's inner curve.
+    <div className="-mx-5 -mt-5 mb-4 flex items-center gap-3 rounded-t-[calc(var(--radius-2xl)-1px)] bg-primary-soft py-1 pr-1 pl-5">
       <div className="flex shrink-0 -space-x-2">
         {senders.slice(0, 2).map((sender) => (
           <Avatar
@@ -34,7 +35,7 @@ export function CheeringRow({ senders, onDismiss }: CheeringRowProps) {
       </div>
       <p
         data-testid="cheering-text"
-        className="min-w-0 flex-1 text-callout text-foreground"
+        className="min-w-0 flex-1 py-0.5 text-callout text-foreground wrap-anywhere"
       >
         {senders.slice(0, 2).map((sender, index) => (
           <Fragment key={sender.userId}>
