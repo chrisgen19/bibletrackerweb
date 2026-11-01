@@ -66,7 +66,8 @@ export async function pushCheers(
   receiverId: string,
   now: Date = new Date(),
 ): Promise<void> {
-  if (!pushConfig) return;
+  const config = pushConfig;
+  if (!config) return;
   try {
     const subscriptions = await getLivePushSubscriptions(receiverId, now);
     if (subscriptions.length === 0) return;
@@ -75,7 +76,7 @@ export async function pushCheers(
     if (!notification) return;
     const payload = JSON.stringify(notification);
     await Promise.allSettled(
-      subscriptions.map((s) => sendTo(s, payload, pushConfig)),
+      subscriptions.map((s) => sendTo(s, payload, config)),
     );
   } catch (error) {
     // The error name only: messages can carry credentials.
