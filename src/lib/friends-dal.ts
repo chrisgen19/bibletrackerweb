@@ -610,32 +610,30 @@ export async function sendNudge(
  * and username, never email.
  */
 export async function getOpenNudges(receiverId: string): Promise<OpenNudges> {
-  const [nudges, latest] = await Promise.all([
-    db.friendNudge.findMany({
-      where: {
-        receiverId,
-        dismissedAt: null,
-        friendship: { status: "accepted" },
+  const latest = await db.readingCompletion.aggregate({
+    where: { userId: receiverId },
+    _max: { localDate: true },
+  });
+  const lastRead = latest._max.localDate;
+  // Only nudges from days after the latest completion are still open.
+  const nudges = await db.friendNudge.findMany({
+    where: {
+      receiverId,
+      dismissedAt: null,
+      friendship: { status: "accepted" },
+      ...(lastRead !== null && { localDate: { gt: lastRead } }),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      sender: {
+        select: { id: true, username: true, name: true, image: true },
       },
-      orderBy: { createdAt: "desc" },
-      select: {
-        localDate: true,
-        sender: {
-          select: { id: true, username: true, name: true, image: true },
-        },
-      },
-    }),
-    db.readingCompletion.aggregate({
-      where: { userId: receiverId },
-      _max: { localDate: true },
-    }),
-  ]);
-  const lastRead = latest._max.localDate?.getTime() ?? null;
+    },
+  });
 
   const senders: FriendProfile[] = [];
   const seen = new Set<string>();
-  for (const { localDate, sender } of nudges) {
-    if (lastRead !== null && localDate.getTime() <= lastRead) continue;
+  for (const { sender } of nudges) {
     if (sender.username === null || seen.has(sender.id)) continue;
     seen.add(sender.id);
     senders.push({
