@@ -1,6 +1,7 @@
 // From bibletrackerapp's today-reading-card.test.tsx. On the web the card links to the day
 // rather than calling onOpenDetail, so "routes to the day detail" checks the link.
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 
 import type { DayReading } from "@/features/reading-plan/domain/types";
 
@@ -27,6 +28,7 @@ function renderCard(
   handlers: {
     onMarkRead?: () => void;
     progress?: Parameters<typeof TodayReadingCard>[0]["progress"];
+    banner?: ReactNode;
   } = {},
 ) {
   return render(
@@ -35,6 +37,7 @@ function renderCard(
       onMarkRead={handlers.onMarkRead ?? vi.fn()}
       detailHref={DETAIL}
       progress={handlers.progress ?? null}
+      banner={handlers.banner}
     />,
   );
 }
@@ -218,5 +221,31 @@ describe("TodayReadingCard", () => {
 
     expect(screen.getByText("Genesis 1–2")).toBeTruthy();
     expect(screen.getByText("2 chapters")).toBeTruthy();
+  });
+
+  it("renders the banner above the reading in a scheduled day", () => {
+    renderCard(makeDay(), { banner: <p>Maria is cheering you on</p> });
+
+    const banner = screen.getByText("Maria is cheering you on");
+    const reference = screen.getByTestId("today-reference");
+    expect(
+      banner.compareDocumentPosition(reference) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("renders the banner on a not-scheduled day", () => {
+    renderCard(
+      makeDay({
+        status: "no-plan",
+        scheduled: { kind: "not-scheduled" },
+      }),
+      {
+        banner: <p>Maria is cheering you on</p>,
+      },
+    );
+
+    expect(screen.getByText("Maria is cheering you on")).toBeTruthy();
+    expect(screen.getByText("Nothing scheduled")).toBeTruthy();
   });
 });
