@@ -13,6 +13,11 @@ export interface SessionUser {
   readonly image: string | null;
 }
 
+/** One Better Auth session lookup per request, shared by the readers below. */
+const getAuthSession = cache(async () =>
+  auth.api.getSession({ headers: await headers() }),
+);
+
 /**
  * The signed-in user for this request, or `null`.
  *
@@ -21,10 +26,19 @@ export interface SessionUser {
  * Cached per request, so a layout and its page share one lookup.
  */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getAuthSession();
   if (session === null) return null;
   const { id, name, email, image } = session.user;
   return { id, name, email, image: image ?? null };
+});
+
+/**
+ * The id of this request's login session, or `null`. Push subscriptions are tied to it,
+ * so a device stops receiving cheers when the session ends.
+ */
+export const getCurrentSessionId = cache(async (): Promise<string | null> => {
+  const session = await getAuthSession();
+  return session === null ? null : session.session.id;
 });
 
 /**
