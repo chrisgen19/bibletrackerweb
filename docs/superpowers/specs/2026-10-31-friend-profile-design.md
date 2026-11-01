@@ -249,5 +249,5 @@ which the proxy skips, so it checks the session and the friendship itself and an
   PWA guide uses [`web-push`](https://www.npmjs.com/package/web-push), a new package that
   needs approval). On iPhone, push only works once the app is added to the home screen
   (iOS 16.4+); others still get the in-app banner.
-- Update the phase 1 spec's "Visibility before accepting" table to add a row for what
-  accepted friends now see.
+- ~~Update the phase 1 spec's "Visibility before accepting" table to add a row for what
+  accepted friends now see.~~ Done in #42.
