@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { HapticTap } from "@/components/haptic-tap";
 import { Panel } from "@/components/panel";
@@ -19,6 +20,8 @@ interface TodayReadingCardProps {
   detailHref: string;
   /** Progress on today's chapter, when a single chapter is scheduled. */
   progress?: ChapterProgress | null;
+  /** A row across the card's top edge, such as who is cheering the reader on. */
+  banner?: ReactNode;
 }
 
 const Eyebrow = () => (
@@ -52,11 +55,13 @@ export function TodayReadingCard({
   onMarkRead,
   detailHref,
   progress = null,
+  banner,
 }: TodayReadingCardProps) {
   if (day.scheduled.kind !== "scheduled") {
     const [title, body] = NOT_SCHEDULED_COPY[day.scheduled.kind];
     return (
       <Panel variant="raised">
+        {banner}
         <Eyebrow />
         <p className="mt-2 text-headline">{title}</p>
         <p className="mt-1 text-callout text-muted-foreground">{body}</p>
@@ -85,6 +90,7 @@ export function TodayReadingCard({
 
   return (
     <Panel variant="raised">
+      {banner}
       <div className="flex items-center justify-between">
         <Eyebrow />
         <span

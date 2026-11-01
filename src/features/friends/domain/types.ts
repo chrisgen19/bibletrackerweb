@@ -48,6 +48,8 @@ export interface FriendsOverview {
 export interface FriendReading {
   readonly snapshot: ReadingSnapshot;
   readonly today: DateKey;
+  /** Whether the viewer has already nudged this friend on the friend's today. */
+  readonly nudgedToday: boolean;
 }
 
 /**
@@ -62,3 +64,18 @@ export type FriendReadingLookup =
       readonly profile: FriendProfile;
       readonly reading: FriendReading;
     };
+
+/**
+ * The outcome of cheering a friend on. "not-found" covers yourself, a stranger, a pending
+ * request either way and a removed friend, so a sender cannot tell them apart.
+ */
+export type NudgeOutcome =
+  | "sent"
+  | "already-nudged"
+  | "already-read"
+  | "not-found";
+
+/** Friends with an open nudge for the reader: most recent nudge first, one per sender. */
+export interface OpenNudges {
+  readonly senders: readonly FriendProfile[];
+}

@@ -12,6 +12,8 @@ const COPY: Record<FriendsErrorCode, string> = {
   "too-many-pending":
     "You have a lot of requests waiting. Cancel some before sending more.",
   "friend-limit": "One of you has reached the friend limit.",
+  "already-nudged": "You've already cheered them on today.",
+  "already-read": "They've already read today.",
   network: "Couldn't save that. Check your connection and try again.",
 };
 

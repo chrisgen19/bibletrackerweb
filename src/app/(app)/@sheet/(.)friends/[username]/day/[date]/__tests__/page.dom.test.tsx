@@ -24,6 +24,7 @@ const FRIEND: FriendReadingLookup = {
   reading: {
     snapshot: { plans: [], activePlan: null, completions: [] },
     today: "2026-10-31",
+    nudgedToday: false,
   },
 };
 

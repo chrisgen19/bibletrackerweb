@@ -20,7 +20,11 @@ import {
 } from "../friend-reading-provider";
 
 const EMPTY = { plans: [], activePlan: null, completions: [] };
-const FRIEND: FriendReading = { snapshot: EMPTY, today: "2026-10-31" };
+const FRIEND: FriendReading = {
+  snapshot: EMPTY,
+  today: "2026-10-31",
+  nudgedToday: false,
+};
 const READER_TODAY = "2026-11-02";
 
 function Probe({ id }: { id: string }) {
@@ -103,7 +107,11 @@ describe("FriendReadingProvider", () => {
     // Only the interval is faked: the response body and TanStack's hand-off to React run
     // on real timers.
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
-    const NEXT_DAY: FriendReading = { snapshot: EMPTY, today: "2026-11-01" };
+    const NEXT_DAY: FriendReading = {
+      snapshot: EMPTY,
+      today: "2026-11-01",
+      nudgedToday: false,
+    };
     const fetchMock = vi.fn(async () => Response.json(NEXT_DAY));
     vi.stubGlobal("fetch", fetchMock);
     renderUnderReader(
@@ -124,7 +132,11 @@ describe("FriendReadingProvider", () => {
   });
 
   describe("opening the profile again", () => {
-    const LATER: FriendReading = { snapshot: EMPTY, today: "2026-11-01" };
+    const LATER: FriendReading = {
+      snapshot: EMPTY,
+      today: "2026-11-01",
+      nudgedToday: false,
+    };
 
     function mount(queryClient: QueryClient, initial: FriendReading) {
       return render(

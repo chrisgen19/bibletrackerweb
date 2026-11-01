@@ -38,6 +38,8 @@ model User {
   friendInvite       FriendInvite?
   friendshipsAsA     Friendship[]        @relation("FriendshipUserA")
   friendshipsAsB     Friendship[]        @relation("FriendshipUserB")
+  nudgesSent         FriendNudge[]       @relation("FriendNudgeSender")
+  nudgesReceived     FriendNudge[]       @relation("FriendNudgeReceiver")
 
   @@map("user")
 }
@@ -215,9 +217,32 @@ model Friendship {
 
   userA User @relation("FriendshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
   userB User @relation("FriendshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  nudges FriendNudge[]
 
   @@unique([userAId, userBId])
   @@index([userBId])
   @@index([requestedById, status])
   @@map("friendship")
+}
+
+/// A friend cheering another on for the receiver's day. Open until the receiver reads on
+/// or after `local_date`, or dismisses it. Cascades from the friendship, so removing a
+/// friend deletes the nudges between the two.
+model FriendNudge {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  friendshipId String    @map("friendship_id") @db.Uuid
+  senderId     String    @map("sender_id")
+  receiverId   String    @map("receiver_id")
+  /// The receiver's local day when it was sent: the daily limit's key.
+  localDate    DateTime  @map("local_date") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  dismissedAt  DateTime? @map("dismissed_at") @db.Timestamptz(3)
+
+  friendship Friendship @relation(fields: [friendshipId], references: [id], onDelete: Cascade)
+  sender     User       @relation("FriendNudgeSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User       @relation("FriendNudgeReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId, localDate])
+  @@index([receiverId, dismissedAt])
+  @@map("friend_nudge")
 }

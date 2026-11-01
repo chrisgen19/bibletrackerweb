@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-
 import { ProgressScreen } from "@/features/progress/components/progress-screen";
 import { getActiveReadingPlan, getCalendarViewPreference } from "@/lib/dal";
+import { getOpenNudges } from "@/lib/friends-dal";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Your Reading" };
@@ -11,10 +11,15 @@ export default async function ProgressPage() {
   const user = await requireUser();
   // The presence of a plan is the onboarding marker, as on iOS.
   if ((await getActiveReadingPlan(user.id)) === null) redirect("/onboarding");
+  const [savedCalendarView, initialNudges] = await Promise.all([
+    getCalendarViewPreference(user.id),
+    getOpenNudges(user.id),
+  ]);
   return (
     <ProgressScreen
       readerId={user.id}
-      savedCalendarView={await getCalendarViewPreference(user.id)}
+      savedCalendarView={savedCalendarView}
+      initialNudges={initialNudges}
     />
   );
 }

@@ -6,6 +6,7 @@ import {
   cancelFriendRequest,
   declineAllFriendRequests,
   declineFriendRequest,
+  dismissOpenNudges,
   findInviteOwner,
   findUserByUsername,
   getOrCreateInvite,
@@ -14,10 +15,12 @@ import {
   removeFriend,
   resetInvite,
   sendFriendRequest,
+  sendNudge,
   setUsername,
 } from "@/lib/friends-dal";
 
 import {
+  dismissNudgesInput,
   inviteInput,
   searchInput,
   setUsernameInput,
@@ -167,4 +170,26 @@ export async function resetInviteFor(
 ): Promise<InviteCodeResult> {
   if ((await getUsername(userId)) === null) return fail("username-required");
   return { ok: true, code: await resetInvite(userId) };
+}
+
+/** Cheers a friend on. Strangers and non-friends are not-found; the DAL enforces once per day. */
+export async function nudgeFriendFor(
+  userId: string,
+  input: unknown,
+): Promise<FriendsResult> {
+  const parsed = targetInput.safeParse(input);
+  if (!parsed.success) return fail("invalid-input");
+  const outcome = await sendNudge(userId, parsed.data.userId);
+  return outcome === "sent" ? OK : fail(outcome);
+}
+
+/** Hides the banner for these senders. Ids with no open nudge are simply skipped. */
+export async function dismissNudgesFor(
+  userId: string,
+  input: unknown,
+): Promise<FriendsResult> {
+  const parsed = dismissNudgesInput.safeParse(input);
+  if (!parsed.success) return fail("invalid-input");
+  await dismissOpenNudges(userId, parsed.data.senderIds);
+  return OK;
 }

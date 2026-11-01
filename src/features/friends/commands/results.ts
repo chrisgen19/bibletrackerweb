@@ -20,6 +20,10 @@ export type FriendsErrorCode =
   | "self"
   | "too-many-pending"
   | "friend-limit"
+  /** The friend was already cheered on during their current day. */
+  | "already-nudged"
+  /** The friend has already read today, so a nudge is moot. */
+  | "already-read"
   /** The action call itself threw (offline, a dropped connection). Set by the client only. */
   | "network";
 
@@ -58,6 +62,10 @@ export function friendsErrorMessage(code: FriendsErrorCode): string {
       return "You have a lot of requests waiting. Cancel some before sending more.";
     case "friend-limit":
       return "One of you has reached the friend limit.";
+    case "already-nudged":
+      return "You've already cheered them on today.";
+    case "already-read":
+      return "They've already read today.";
     case "network":
       return "Couldn't save that. Check your connection and try again.";
   }

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useTransition } from "react";
 
 import { setCalendarView } from "@/actions/reading";
+import { CheeringRow } from "@/features/friends/components/cheering-row";
+import type { OpenNudges } from "@/features/friends/domain/types";
+import { useOpenNudges } from "@/features/friends/hooks/use-open-nudges";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 import {
@@ -28,18 +31,22 @@ interface ProgressScreenProps {
   readerId: string;
   /** The calendar view last chosen on a phone, from the reader's account. */
   savedCalendarView?: CalendarViewPreference;
+  /** Friends who have cheered the reader on and are not yet dismissed. */
+  initialNudges: OpenNudges;
 }
 
 /** bibletrackerapp's ProgressScreen (src/app/index.tsx). */
 export function ProgressScreen({
   readerId,
   savedCalendarView = DEFAULT_CALENDAR_VIEW,
+  initialNudges,
 }: ProgressScreenProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const {
     hasCompletedOnboarding,
     today,
+    completionLookup,
     completeReading,
     currentReadThrough,
     finishedReadThroughs,
@@ -62,6 +69,11 @@ export function ProgressScreen({
   const streaks = useStreaks();
   const { todayReading, todayProgress, unfinished, chaptersRead, canonIndex } =
     useReadingProgress();
+  // Any reading today closes the nudges on the server, extras included, so ask the full
+  // lookup: `todayReading` is the plan's view, which an extra does not complete.
+  const { senders, dismiss } = useOpenNudges(initialNudges, {
+    todayCompleted: completionLookup.has(today),
+  });
 
   // A reset on this or another device ends the plan: back to onboarding, as on iOS.
   // Only once it is stored, or the server would still see the plan and send us back.
@@ -95,6 +107,7 @@ export function ProgressScreen({
             onMarkRead={markTodayRead}
             detailHref={`/day/${today}`}
             progress={todayProgress}
+            banner={<CheeringRow senders={senders} onDismiss={dismiss} />}
           />
           {canStartNextReadThrough ? (
             <NextReadThroughCard

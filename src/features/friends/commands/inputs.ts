@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MAX_FRIENDS } from "@/features/friends/domain/types";
 import { usernameSchema } from "@/features/friends/domain/username";
 
 /**
@@ -17,9 +18,14 @@ export const searchInput = z.object({ query: z.string() });
 // Not checked further: an id that matches no reader is refused as not-found.
 export const targetInput = z.object({ userId: z.string().min(1).max(64) });
 
+export const dismissNudgesInput = z.object({
+  senderIds: z.array(z.string().min(1).max(64)).min(1).max(MAX_FRIENDS),
+});
+
 export const inviteInput = z.object({ code: z.string().max(64) });
 
 export type SetUsernameInput = z.input<typeof setUsernameInput>;
 export type SearchInput = z.input<typeof searchInput>;
 export type TargetInput = z.input<typeof targetInput>;
+export type DismissNudgesInput = z.input<typeof dismissNudgesInput>;
 export type InviteInput = z.input<typeof inviteInput>;

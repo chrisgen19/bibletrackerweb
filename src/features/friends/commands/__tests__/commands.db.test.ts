@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getRelationship, getUsername } from "@/lib/friends-dal";
+import { getOpenNudges, getRelationship, getUsername } from "@/lib/friends-dal";
 import { createTestUser } from "@/test/factories";
 
 import {
   acceptRequestFor,
   cancelRequestFor,
   declineRequestFor,
+  dismissNudgesFor,
   getInviteCodeFor,
+  nudgeFriendFor,
   removeFriendFor,
   resetInviteFor,
   searchUsernameFor,
@@ -190,5 +192,38 @@ describe("input shape", () => {
       ok: false,
       error: "invalid-input",
     });
+  });
+});
+
+describe("nudges", () => {
+  it("nudges a friend, refuses a stranger and a repeat", async () => {
+    expect(await nudgeFriendFor(alice, { userId: bob })).toEqual({
+      ok: false,
+      error: "not-found",
+    });
+    await sendRequestFor(alice, { userId: bob });
+    await acceptRequestFor(bob, { userId: alice });
+    expect(await nudgeFriendFor(alice, { userId: bob })).toEqual({ ok: true });
+    expect(await nudgeFriendFor(alice, { userId: bob })).toEqual({
+      ok: false,
+      error: "already-nudged",
+    });
+  });
+
+  it("refuses malformed nudge and dismiss input", async () => {
+    const invalid = { ok: false, error: "invalid-input" };
+    expect(await nudgeFriendFor(alice, { userId: "" })).toEqual(invalid);
+    expect(await dismissNudgesFor(alice, { senderIds: [] })).toEqual(invalid);
+  });
+
+  it("dismisses open nudges", async () => {
+    await sendRequestFor(alice, { userId: bob });
+    await acceptRequestFor(bob, { userId: alice });
+    await nudgeFriendFor(alice, { userId: bob });
+    expect((await getOpenNudges(bob)).senders).toHaveLength(1);
+    expect(await dismissNudgesFor(bob, { senderIds: [alice] })).toEqual({
+      ok: true,
+    });
+    expect((await getOpenNudges(bob)).senders).toHaveLength(0);
   });
 });

@@ -10,6 +10,8 @@ import { router } from "@/test/dom-setup";
 import type { FriendProfile, FriendReading } from "../../domain/types";
 import { FriendProfileScreen } from "../friend-profile/friend-profile-screen";
 
+vi.mock("@/actions/friends", () => ({ nudgeFriend: vi.fn() }));
+
 const MARIA: FriendProfile = {
   userId: "user-maria",
   username: "maria",
@@ -31,16 +33,19 @@ const COMPLETIONS = Array.from({ length: 30 }, (_, i) => i + 1)
 const READING: FriendReading = {
   snapshot: { plans: [PLAN], activePlan: PLAN, completions: COMPLETIONS },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 const NO_PLAN: FriendReading = {
   snapshot: { plans: [], activePlan: null, completions: [] },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 const NO_READINGS: FriendReading = {
   snapshot: { plans: [PLAN], activePlan: PLAN, completions: [] },
   today: "2026-10-31",
+  nudgedToday: false,
 };
 
 /** Every piece of text a reader or a screen reader meets: visible text and aria-labels. */
@@ -68,6 +73,12 @@ describe("FriendProfileScreen", () => {
     ).toBeTruthy();
     expect(screen.getByText("@maria")).toBeTruthy();
     expect(screen.getByText("Hasn't read yet today")).toBeTruthy();
+  });
+
+  it("offers to cheer the friend on while they have not read today", () => {
+    renderProfile();
+
+    expect(screen.getByRole("button", { name: /Cheer Maria on/ })).toBeTruthy();
   });
 
   it("links back to the Friends list", () => {
