@@ -76,12 +76,13 @@ export function PushQuestion({ publicKey }: { publicKey: string | null }) {
       <p className="text-callout text-muted-foreground">
         Want these on your lock screen?
       </p>
-      <div className="flex items-center gap-1">
+      {/* Labels never break; on a narrow phone the pair wraps to two rows instead. */}
+      <div className="flex flex-wrap items-center gap-x-1">
         <button
           type="button"
           onClick={() => void onTurnOn()}
           disabled={pending}
-          className="my-1 flex min-h-11 items-center rounded-full bg-primary px-4 text-callout font-semibold text-primary-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+          className="my-1 flex min-h-11 shrink-0 items-center rounded-full bg-primary px-4 whitespace-nowrap text-callout font-semibold text-primary-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
         >
           Turn on
         </button>
@@ -89,7 +90,7 @@ export function PushQuestion({ publicKey }: { publicKey: string | null }) {
           type="button"
           onClick={notNow}
           disabled={pending}
-          className="flex min-h-11 items-center rounded-full px-3 text-callout text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+          className="flex min-h-11 shrink-0 items-center rounded-full px-3 whitespace-nowrap text-callout text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
         >
           Not now
         </button>
