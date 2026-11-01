@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { deletePushSubscription } from "@/actions/push";
+import { unsubscribeDevice } from "@/features/push/browser/push-client";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 /**
@@ -21,6 +23,13 @@ export function useSignOut() {
   async function signOut() {
     setPending(true);
     setFailed(false);
+    // Best effort: a push cleanup problem must never block or fail sign-out.
+    try {
+      const endpoint = await unsubscribeDevice();
+      if (endpoint !== null) await deletePushSubscription({ endpoint });
+    } catch {
+      // Ignored on purpose.
+    }
     const { error } = await catchNetworkFailure(() => authClient.signOut());
     if (error === null) {
       router.replace("/sign-in");

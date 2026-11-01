@@ -3,11 +3,13 @@ import type { ReactNode } from "react";
 import { LensTabBar } from "@/components/app-nav/lens-tab-bar";
 import { QueryProvider } from "@/components/query-provider";
 import { AccountProvider } from "@/features/auth/hooks/account-context";
+import { PushSessionCheck } from "@/features/push/components/push-session-check";
 import { WriteStatus } from "@/features/reading-plan/components/write-status";
 import { ReadingDataProvider } from "@/features/reading-plan/hooks/reading-data-provider";
 import { AppearanceSync } from "@/features/settings/components/appearance-sync";
 import { readAppearanceCookie } from "@/lib/appearance-cookie";
 import { getAppearancePreference, getReadingSnapshot } from "@/lib/dal";
+import { pushConfig } from "@/lib/push-config";
 import { resolveReaderTimeZone } from "@/lib/reader-time-zone";
 import { requireUser } from "@/lib/session";
 import { getTodayDateKeyInZone } from "@/utils/zoned-date-key";
@@ -48,6 +50,7 @@ export default async function AppLayout({
           {/* The day sheet, when a day is opened from inside the app (@sheet/(.)day). */}
           {sheet}
           <WriteStatus />
+          <PushSessionCheck publicKey={pushConfig?.publicKey ?? null} />
           {accountAppearance === null ? null : (
             <AppearanceSync preference={accountAppearance} />
           )}
