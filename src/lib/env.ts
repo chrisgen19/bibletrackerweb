@@ -13,6 +13,12 @@ const optionalString = z.preprocess(
   z.string().min(1).optional(),
 );
 
+/** Bytes in a base64url string without padding, or null when it is not base64url. */
+const base64UrlByteLength = (value: string): number | null =>
+  /^[A-Za-z0-9_-]+$/.test(value)
+    ? Buffer.from(value, "base64url").length
+    : null;
+
 /**
  * The only place feature code may read `process.env`.
  *
@@ -42,6 +48,9 @@ const envSchema = z
     }),
     GOOGLE_CLIENT_ID: optionalString,
     GOOGLE_CLIENT_SECRET: optionalString,
+    VAPID_PUBLIC_KEY: optionalString,
+    VAPID_PRIVATE_KEY: optionalString,
+    VAPID_SUBJECT: optionalString,
   })
   .superRefine((env, ctx) => {
     if (
@@ -69,6 +78,46 @@ const envSchema = z
         ],
         message:
           "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET together, or leave both empty.",
+      });
+    }
+    // Web push needs the full VAPID set; a partial one would fail on the first send.
+    const vapid = [
+      ["VAPID_PUBLIC_KEY", env.VAPID_PUBLIC_KEY],
+      ["VAPID_PRIVATE_KEY", env.VAPID_PRIVATE_KEY],
+      ["VAPID_SUBJECT", env.VAPID_SUBJECT],
+    ] as const;
+    const missing = vapid.filter(([, value]) => value === undefined);
+    const [firstMissing] = missing;
+    if (firstMissing && missing.length < vapid.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: [firstMissing[0]],
+        message:
+          "Set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT together, or leave all three empty.",
+      });
+    }
+    // web-push throws on a malformed key, so catch it here rather than on the first send.
+    const keys = [
+      ["VAPID_PUBLIC_KEY", env.VAPID_PUBLIC_KEY, 65, "public"],
+      ["VAPID_PRIVATE_KEY", env.VAPID_PRIVATE_KEY, 32, "private"],
+    ] as const;
+    for (const [name, value, bytes, kind] of keys) {
+      if (value !== undefined && base64UrlByteLength(value) !== bytes) {
+        ctx.addIssue({
+          code: "custom",
+          path: [name],
+          message: `${name} must be the base64url ${kind} key from \`npx web-push generate-vapid-keys\`, without quotes or padding.`,
+        });
+      }
+    }
+    if (
+      env.VAPID_SUBJECT !== undefined &&
+      !/^(mailto:|https:)/.test(env.VAPID_SUBJECT)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["VAPID_SUBJECT"],
+        message: "VAPID_SUBJECT must start with mailto: or https:.",
       });
     }
   });

@@ -14,6 +14,7 @@ import {
   changePasswordSchema,
   PASSWORD_MIN,
 } from "@/features/auth/schemas";
+import { resaveThisDevice } from "@/features/push/browser/push-client";
 import { authClient, catchNetworkFailure } from "@/lib/auth-client";
 
 import {
@@ -104,6 +105,8 @@ function PasswordForm({
       setFormError(authErrorMessage(error));
       return;
     }
+    // Fire and forget: the helper never throws and must not delay the success state.
+    void resaveThisDevice();
     onChanged();
   });
 

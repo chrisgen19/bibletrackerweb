@@ -31,6 +31,10 @@ vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
 vi.mock("@/actions/reading", () => ({ setCalendarView: vi.fn() }));
 vi.mock("@/actions/friends", () => ({ dismissNudges: vi.fn() }));
 
+vi.mock("@/features/push/components/push-question", () => ({
+  PushQuestion: () => null,
+}));
+
 const TODAY = "2026-10-31";
 const PLAN = makePlan({ startDate: "2026-10-01" });
 const CHEERED: OpenNudges = {
@@ -39,19 +43,33 @@ const CHEERED: OpenNudges = {
   ],
 };
 
-function renderToday(completions: ReadingCompletion[]) {
+const client = new QueryClient();
+
+function Screen({ view }: { view: ReadingView }) {
+  return (
+    <QueryClientProvider client={client}>
+      <ReadingViewProvider view={view}>
+        <ProgressScreen
+          readerId="reader-1"
+          initialNudges={CHEERED}
+          vapidPublicKey={null}
+        />
+      </ReadingViewProvider>
+    </QueryClientProvider>
+  );
+}
+
+function viewWith(completions: ReadingCompletion[]): ReadingView {
   const view = deriveReadingView(
     { plans: [PLAN], activePlan: PLAN, completions },
     TODAY,
   );
   reader.view = view;
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ReadingViewProvider view={view}>
-        <ProgressScreen readerId="reader-1" initialNudges={CHEERED} />
-      </ReadingViewProvider>
-    </QueryClientProvider>,
-  );
+  return view;
+}
+
+function renderToday(completions: ReadingCompletion[]) {
+  render(<Screen view={viewWith(completions)} />);
 }
 
 const cheeringRow = () => screen.queryByText(/is cheering you on/);

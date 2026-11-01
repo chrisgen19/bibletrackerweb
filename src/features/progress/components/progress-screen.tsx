@@ -8,6 +8,7 @@ import { setCalendarView } from "@/actions/reading";
 import { CheeringRow } from "@/features/friends/components/cheering-row";
 import type { OpenNudges } from "@/features/friends/domain/types";
 import { useOpenNudges } from "@/features/friends/hooks/use-open-nudges";
+import { PushQuestion } from "@/features/push/components/push-question";
 import { useReadingData } from "@/features/reading-plan/hooks/reading-data-provider";
 import { useWritesSettled } from "@/features/reading-plan/hooks/use-writes-settled";
 import {
@@ -33,6 +34,8 @@ interface ProgressScreenProps {
   savedCalendarView?: CalendarViewPreference;
   /** Friends who have cheered the reader on and are not yet dismissed. */
   initialNudges: OpenNudges;
+  /** The VAPID public key for web push, or null when push is not configured. */
+  vapidPublicKey: string | null;
 }
 
 /** bibletrackerapp's ProgressScreen (src/app/index.tsx). */
@@ -40,6 +43,7 @@ export function ProgressScreen({
   readerId,
   savedCalendarView = DEFAULT_CALENDAR_VIEW,
   initialNudges,
+  vapidPublicKey,
 }: ProgressScreenProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -107,7 +111,11 @@ export function ProgressScreen({
             onMarkRead={markTodayRead}
             detailHref={`/day/${today}`}
             progress={todayProgress}
-            banner={<CheeringRow senders={senders} onDismiss={dismiss} />}
+            banner={
+              <CheeringRow senders={senders} onDismiss={dismiss}>
+                <PushQuestion publicKey={vapidPublicKey} />
+              </CheeringRow>
+            }
           />
           {canStartNextReadThrough ? (
             <NextReadThroughCard

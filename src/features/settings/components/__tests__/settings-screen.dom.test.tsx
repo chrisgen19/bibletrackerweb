@@ -18,6 +18,13 @@ vi.mock("@/features/reading-plan/hooks/reading-data-provider", () => ({
 vi.mock("@/features/reading-plan/hooks/use-writes-settled", () => ({
   useWritesSettled: () => true,
 }));
+vi.mock("@/features/push/hooks/use-push-device", () => ({
+  usePushDevice: () => ({
+    status: "off",
+    turnOn: vi.fn(),
+    turnOff: vi.fn(),
+  }),
+}));
 vi.mock("@/actions/reading", () => ({ setAppearance: vi.fn() }));
 vi.mock("@/features/auth/components/sign-out-button", () => ({
   SignOutButton: () => null,
@@ -32,6 +39,11 @@ vi.mock("@/lib/auth-client", async (importOriginal) => ({
   authClient: { linkSocial, updateUser, changePassword },
 }));
 
+const { savePushSubscription } = vi.hoisted(() => ({
+  savePushSubscription: vi.fn(),
+}));
+vi.mock("@/actions/push", () => ({ savePushSubscription }));
+
 type Google = ComponentProps<typeof SettingsScreen>["google"];
 
 function renderSettings(google: Google = null, hasPassword = true) {
@@ -43,11 +55,24 @@ function renderSettings(google: Google = null, hasPassword = true) {
       email="reader@example.test"
       hasPassword={hasPassword}
       google={google}
+      vapidPublicKey="test-key"
     />,
   );
 }
 
 describe("SettingsScreen", () => {
+  it("places Notifications between Appearance and Account", () => {
+    renderSettings();
+
+    const order = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((h) => h.textContent)
+      .filter((t) =>
+        ["Appearance", "Notifications", "Account"].includes(t ?? ""),
+      );
+    expect(order).toEqual(["Appearance", "Notifications", "Account"]);
+  });
+
   it("shows where the reader is, not where the plan segment began", () => {
     renderSettings();
 
@@ -70,6 +95,7 @@ describe("SettingsScreen", () => {
         email="reader@example.test"
         hasPassword
         google={null}
+        vapidPublicKey={null}
       />,
     );
 
@@ -200,6 +226,81 @@ describe("SettingsScreen", () => {
         revokeOtherSessions: true,
       });
       expect(await screen.findByText("Password changed")).toBeTruthy();
+    });
+
+    // Better Auth deletes this device's session too when other sessions are revoked, which
+    // cascades the push row away. A successful change re-saves it under the new session.
+    describe("keeping cheers on for this device", () => {
+      const subscription = {
+        toJSON: () => ({
+          endpoint: "https://push.example.test/abc",
+          keys: { p256dh: "p256dh-key", auth: "auth-key" },
+        }),
+      };
+
+      function stubServiceWorker(current: unknown) {
+        Object.defineProperty(navigator, "serviceWorker", {
+          configurable: true,
+          value: {
+            getRegistration: async () => ({
+              pushManager: { getSubscription: async () => current },
+            }),
+          },
+        });
+      }
+
+      beforeEach(() => {
+        savePushSubscription.mockReset();
+        savePushSubscription.mockResolvedValue({ ok: true });
+      });
+      afterEach(() => {
+        Reflect.deleteProperty(navigator, "serviceWorker");
+      });
+
+      it("re-saves this device's subscription after a successful change", async () => {
+        stubServiceWorker(subscription);
+        changePassword.mockResolvedValue({ data: {}, error: null });
+        await change("gleaning-barley", "threshing-floor", "threshing-floor");
+
+        expect(await screen.findByText("Password changed")).toBeTruthy();
+        await vi.waitFor(() =>
+          expect(savePushSubscription).toHaveBeenCalledExactlyOnceWith({
+            endpoint: "https://push.example.test/abc",
+            keys: { p256dh: "p256dh-key", auth: "auth-key" },
+          }),
+        );
+      });
+
+      it("does not re-save after a failed change", async () => {
+        stubServiceWorker(subscription);
+        changePassword.mockResolvedValue({
+          data: null,
+          error: { code: "INVALID_PASSWORD", status: 400, statusText: "" },
+        });
+        await change("not-my-password", "threshing-floor", "threshing-floor");
+
+        await screen.findByText("That isn't your current password.");
+        expect(savePushSubscription).not.toHaveBeenCalled();
+      });
+
+      it("does not re-save when this device has no subscription", async () => {
+        stubServiceWorker(null);
+        changePassword.mockResolvedValue({ data: {}, error: null });
+        await change("gleaning-barley", "threshing-floor", "threshing-floor");
+
+        expect(await screen.findByText("Password changed")).toBeTruthy();
+        expect(savePushSubscription).not.toHaveBeenCalled();
+      });
+
+      it("still shows success when the re-save throws", async () => {
+        stubServiceWorker(subscription);
+        savePushSubscription.mockRejectedValue(new Error("offline"));
+        changePassword.mockResolvedValue({ data: {}, error: null });
+        await change("gleaning-barley", "threshing-floor", "threshing-floor");
+
+        expect(await screen.findByText("Password changed")).toBeTruthy();
+        await vi.waitFor(() => expect(savePushSubscription).toHaveBeenCalled());
+      });
     });
 
     it("stops at a confirmation that doesn't match", async () => {

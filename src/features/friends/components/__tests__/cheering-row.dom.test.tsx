@@ -71,6 +71,25 @@ describe("CheeringRow", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  it("renders children under the names", () => {
+    render(
+      <CheeringRow senders={[person("Maria")]} onDismiss={vi.fn()}>
+        <p>Want these on your lock screen?</p>
+      </CheeringRow>,
+    );
+    expect(screen.getByText("Want these on your lock screen?")).not.toBeNull();
+    expect(text()).toBe("Maria is cheering you on");
+  });
+
+  it("the X dismisses without touching the question count", () => {
+    const onDismiss = vi.fn();
+    window.localStorage.setItem("push-not-now-count", "1");
+    render(<CheeringRow senders={[person("Maria")]} onDismiss={onDismiss} />);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem("push-not-now-count")).toBe("1");
+  });
+
   it("renders nothing without senders", () => {
     const { container } = render(
       <CheeringRow senders={[]} onDismiss={vi.fn()} />,

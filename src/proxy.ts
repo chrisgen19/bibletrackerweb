@@ -32,7 +32,8 @@ export function proxy(request: NextRequest): NextResponse {
 export const config = {
   matcher: [
     // Everything except API routes (they answer with status codes, not redirects),
-    // Next.js internals, and static files.
-    "/((?!api/|_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|webmanifest)$).*)",
+    // Next.js internals, the push service worker (the browser fetches it without
+    // cookies), and static files.
+    "/((?!api/|_next/static|_next/image|favicon\\.ico|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico|txt|xml|webmanifest)$).*)",
   ],
 };

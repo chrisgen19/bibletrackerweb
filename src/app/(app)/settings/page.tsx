@@ -6,6 +6,7 @@ import { SettingsScreen } from "@/features/settings/components/settings-screen";
 import { readAppearanceCookie } from "@/lib/appearance-cookie";
 import { googleSignInEnabled } from "@/lib/auth";
 import { getAppearancePreference } from "@/lib/dal";
+import { pushConfig } from "@/lib/push-config";
 import { getSignInMethods, requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -37,6 +38,7 @@ export default async function SettingsPage({
       email={user.email}
       hasPassword={methods.password}
       google={google}
+      vapidPublicKey={pushConfig?.publicKey ?? null}
     />
   );
 }
