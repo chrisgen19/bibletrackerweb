@@ -23,18 +23,20 @@ interface FriendProfileScreenProps {
  * What sits under the header. Reads the friend's live view, not the server's `initial`, so
  * a plan started while the profile is open shows up on the next refresh.
  */
-function FriendProfileBody({ username }: { username: string }) {
+function FriendProfileBody({ profile }: { profile: FriendProfile }) {
   const { activePlan } = useReadingView();
 
   if (activePlan === null) {
     return (
-      <EmptyState title={`@${username} hasn't started a reading plan yet.`} />
+      <EmptyState
+        title={`@${profile.username} hasn't started a reading plan yet.`}
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <FriendTodayCard />
+      <FriendTodayCard profile={profile} />
       <FriendCalendarCard />
       <HistoryPanels />
     </div>
@@ -71,7 +73,7 @@ export function FriendProfileScreen({
       </header>
 
       <FriendReadingProvider username={profile.username} initial={initial}>
-        <FriendProfileBody username={profile.username} />
+        <FriendProfileBody profile={profile} />
       </FriendReadingProvider>
     </main>
   );

@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useMemo } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 
 import { FriendUnavailable } from "@/features/friends/components/friend-profile/friend-unavailable";
 import type { FriendReading } from "@/features/friends/domain/types";
@@ -22,6 +28,26 @@ async function fetchFriendReading(username: string): Promise<FriendReading> {
     throw new Error(`Friend reading request failed: ${response.status}`);
   }
   return (await response.json()) as FriendReading;
+}
+
+interface FriendNudgeState {
+  /** Whether the viewer has already cheered this friend on for the friend's current day. */
+  nudgedToday: boolean;
+  /** Refetches the friend's reading, so the card catches up with what the server now says. */
+  refresh: () => void;
+}
+
+const FriendNudgeContext = createContext<FriendNudgeState | null>(null);
+
+/** The viewer's nudge state for the friend whose profile is open. */
+export function useFriendNudgeState(): FriendNudgeState {
+  const state = useContext(FriendNudgeContext);
+  if (state === null) {
+    throw new Error(
+      "useFriendNudgeState must be used inside a FriendReadingProvider.",
+    );
+  }
+  return state;
 }
 
 interface FriendReadingProviderProps {
@@ -56,7 +82,7 @@ export function FriendReadingProvider({
   unavailable = <FriendUnavailable />,
   children,
 }: FriendReadingProviderProps) {
-  const { data, error } = useQuery({
+  const { data, error, refetch } = useQuery({
     queryKey: ["friend-reading", username],
     queryFn: () => fetchFriendReading(username),
     initialData: initial,
@@ -83,11 +109,23 @@ export function FriendReadingProvider({
     [username],
   );
 
+  const nudge = useMemo<FriendNudgeState>(
+    () => ({
+      nudgedToday: data.nudgedToday,
+      refresh: () => {
+        void refetch();
+      },
+    }),
+    [data.nudgedToday, refetch],
+  );
+
   if (error instanceof FriendGoneError) return unavailable;
 
   return (
     <ReadingViewProvider view={view} dayHref={dayHref} perspective="friend">
-      {children}
+      <FriendNudgeContext.Provider value={nudge}>
+        {children}
+      </FriendNudgeContext.Provider>
     </ReadingViewProvider>
   );
 }

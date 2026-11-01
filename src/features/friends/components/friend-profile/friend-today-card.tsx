@@ -8,19 +8,23 @@ import {
   describeFriendToday,
   summariseFriendDay,
 } from "../../domain/friend-today";
+import type { FriendProfile } from "../../domain/types";
+import { CheerButton } from "./cheer-button";
 
 /** Whether the friend has read today, and how they are keeping up. */
-export function FriendTodayCard() {
+export function FriendTodayCard({ profile }: { profile: FriendProfile }) {
   const view = useReadingView();
   const index = getCanonIndex(view.activePlan?.canonId ?? DEFAULT_CANON_ID);
-  const { headline, detail } = describeFriendToday(
-    summariseFriendDay(view, index),
-  );
+  const summary = summariseFriendDay(view, index);
+  const { headline, detail } = describeFriendToday(summary);
 
   return (
     <Panel>
       <p className="text-headline">{headline}</p>
       <p className="mt-1 text-footnote text-muted-foreground">{detail}</p>
+      {summary.todayPassages === null && (
+        <CheerButton key={view.today} friend={profile} />
+      )}
     </Panel>
   );
 }

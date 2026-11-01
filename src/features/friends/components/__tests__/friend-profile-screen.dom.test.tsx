@@ -10,6 +10,8 @@ import { router } from "@/test/dom-setup";
 import type { FriendProfile, FriendReading } from "../../domain/types";
 import { FriendProfileScreen } from "../friend-profile/friend-profile-screen";
 
+vi.mock("@/actions/friends", () => ({ nudgeFriend: vi.fn() }));
+
 const MARIA: FriendProfile = {
   userId: "user-maria",
   username: "maria",
@@ -71,6 +73,12 @@ describe("FriendProfileScreen", () => {
     ).toBeTruthy();
     expect(screen.getByText("@maria")).toBeTruthy();
     expect(screen.getByText("Hasn't read yet today")).toBeTruthy();
+  });
+
+  it("offers to cheer the friend on while they have not read today", () => {
+    renderProfile();
+
+    expect(screen.getByRole("button", { name: /Cheer Maria on/ })).toBeTruthy();
   });
 
   it("links back to the Friends list", () => {
