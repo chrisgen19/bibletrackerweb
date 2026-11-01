@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import type { OpenNudges } from "@/features/friends/domain/types";
 
-import { useOpenNudges } from "../use-open-nudges";
+import { OPEN_NUDGES_KEY, useOpenNudges } from "../use-open-nudges";
 
 const actions = vi.hoisted(() => ({ dismissNudges: vi.fn() }));
 vi.mock("@/actions/friends", () => actions);
@@ -26,9 +26,10 @@ function setup(todayCompleted = false) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return renderHook(() => useOpenNudges(INITIAL, { todayCompleted }), {
+  const hook = renderHook(() => useOpenNudges(INITIAL, { todayCompleted }), {
     wrapper,
   });
+  return { ...hook, client };
 }
 
 beforeEach(() => {
@@ -48,14 +49,51 @@ describe("useOpenNudges", () => {
   });
 
   it("dismiss empties the list at once and sends the shown ids", async () => {
+    let finish: (value: unknown) => void = () => {};
+    actions.dismissNudges.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
     const { result } = setup();
-    await act(async () => {
+    act(() => {
       result.current.dismiss();
     });
+    // The action has not resolved yet: the list is already empty.
     await waitFor(() => expect(result.current.senders).toEqual([]));
     expect(actions.dismissNudges).toHaveBeenCalledWith({
       senderIds: ["user-maria", "user-ben"],
     });
+    await act(async () => {
+      finish({ ok: true });
+    });
+    expect(result.current.senders).toEqual([]);
+  });
+
+  it("an in-flight refetch cannot bring a dismissed row back", async () => {
+    let respond: (response: Response) => void = () => {};
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          respond = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { result, client } = setup();
+    act(() => {
+      void client.refetchQueries({ queryKey: OPEN_NUDGES_KEY });
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    act(() => {
+      result.current.dismiss();
+    });
+    await waitFor(() => expect(result.current.senders).toEqual([]));
+    await act(async () => {
+      respond(new Response(JSON.stringify(INITIAL)));
+    });
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(result.current.senders).toEqual([]);
+    vi.unstubAllGlobals();
   });
 
   it("a failed dismiss stays hidden until the next refetch", async () => {

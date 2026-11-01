@@ -47,6 +47,13 @@ export function useOpenNudges(
   const dismiss = () => {
     if (senders.length === 0) return;
     const senderIds = senders.map((sender) => sender.userId);
+    // Cancel any refetch already in flight so its older answer cannot bring the row back.
+    // `revert: false` keeps the cancel from restoring the pre-dismiss data; neither call
+    // is awaited, so the row disappears in this tick.
+    void queryClient.cancelQueries(
+      { queryKey: OPEN_NUDGES_KEY },
+      { revert: false },
+    );
     queryClient.setQueryData<OpenNudges>(OPEN_NUDGES_KEY, { senders: [] });
     void dismissNudges({ senderIds }).catch(() => {});
   };
