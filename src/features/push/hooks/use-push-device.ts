@@ -9,6 +9,7 @@ import {
 } from "@/actions/push";
 import {
   currentSubscription,
+  sameKey,
   subscribeDevice,
   toSubscriptionInput,
   unsubscribeDevice,
@@ -54,6 +55,18 @@ async function checkDevice(
   try {
     const subscription = await currentSubscription();
     if (subscription === null) return "off";
+    // After a VAPID key change, a subscription made with the old key gets 403 from the
+    // push service forever: drop it so the switch is honest and can be turned on again.
+    if (
+      sameKey(subscription.options?.applicationServerKey ?? null, publicKey) ===
+      false
+    ) {
+      await subscription.unsubscribe();
+      await deletePushSubscription({ endpoint: subscription.endpoint }).catch(
+        () => {},
+      );
+      return "off";
+    }
     const result = await refreshPushSubscription(
       toSubscriptionInput(subscription),
     );

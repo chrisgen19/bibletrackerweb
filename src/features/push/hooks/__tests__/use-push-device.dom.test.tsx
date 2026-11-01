@@ -25,11 +25,23 @@ function setNavigator(name: string, value: unknown) {
   navigatorProps.push(name);
 }
 
-function fakeSubscription() {
+/** The VAPID key as the ArrayBuffer a real PushSubscription reports in its options. */
+function keyBuffer(base64url: string): ArrayBuffer {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
+  const bytes = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function fakeSubscription(applicationServerKey?: ArrayBuffer | null) {
   return {
     endpoint: ENDPOINT,
     toJSON: () => SUBSCRIPTION_JSON,
     unsubscribe: vi.fn().mockResolvedValue(true),
+    ...(applicationServerKey === undefined
+      ? {}
+      : { options: { applicationServerKey } }),
   };
 }
 
@@ -143,6 +155,49 @@ describe("usePushDevice", () => {
       current: false,
     });
     const subscription = fakeSubscription();
+    setupDevice({ permission: "granted", subscription });
+    const { result } = renderHook(() => usePushDevice(KEY));
+    await waitFor(() => expect(result.current.status).toBe("off"));
+    expect(subscription.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("is on when the subscription was made with the current key", async () => {
+    const subscription = fakeSubscription(keyBuffer(KEY));
+    setupDevice({ permission: "granted", subscription });
+    const { result } = renderHook(() => usePushDevice(KEY));
+    await waitFor(() => expect(result.current.status).toBe("on"));
+    expect(actions.refreshPushSubscription).toHaveBeenCalledTimes(1);
+    expect(subscription.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("is on when the browser reports no application server key", async () => {
+    const subscription = fakeSubscription(null);
+    setupDevice({ permission: "granted", subscription });
+    const { result } = renderHook(() => usePushDevice(KEY));
+    await waitFor(() => expect(result.current.status).toBe("on"));
+    expect(actions.refreshPushSubscription).toHaveBeenCalledTimes(1);
+    expect(subscription.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("drops a subscription made with an old VAPID key", async () => {
+    const oldKey = new Uint8Array(keyBuffer(KEY));
+    oldKey.reverse();
+    const subscription = fakeSubscription(oldKey.buffer);
+    setupDevice({ permission: "granted", subscription });
+    const { result } = renderHook(() => usePushDevice(KEY));
+    await waitFor(() => expect(result.current.status).toBe("off"));
+    expect(subscription.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(actions.deletePushSubscription).toHaveBeenCalledWith({
+      endpoint: ENDPOINT,
+    });
+    expect(actions.refreshPushSubscription).not.toHaveBeenCalled();
+  });
+
+  it("still ends off when deleting the old-key row fails", async () => {
+    actions.deletePushSubscription.mockRejectedValue(new Error("offline"));
+    const oldKey = new Uint8Array(keyBuffer(KEY));
+    oldKey.reverse();
+    const subscription = fakeSubscription(oldKey.buffer);
     setupDevice({ permission: "granted", subscription });
     const { result } = renderHook(() => usePushDevice(KEY));
     await waitFor(() => expect(result.current.status).toBe("off"));

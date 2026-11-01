@@ -21,6 +21,23 @@ const urlBase64ToUint8Array = (
   return outputArray;
 };
 
+/**
+ * Whether a subscription's application server key (from `subscription.options`) is the
+ * current VAPID public key. `null` means unknown: the browser did not report a key.
+ */
+export const sameKey = (
+  applicationServerKey: ArrayBuffer | null,
+  publicKey: string,
+): boolean | null => {
+  if (applicationServerKey === null) return null;
+  const actual = new Uint8Array(applicationServerKey);
+  const expected = urlBase64ToUint8Array(publicKey);
+  return (
+    actual.length === expected.length &&
+    actual.every((byte, i) => byte === expected[i])
+  );
+};
+
 /** The endpoint and keys the Server Actions expect. Throws when the keys are missing. */
 export const toSubscriptionInput = (
   subscription: PushSubscription,
