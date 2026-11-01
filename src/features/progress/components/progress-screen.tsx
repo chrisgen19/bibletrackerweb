@@ -46,6 +46,7 @@ export function ProgressScreen({
   const {
     hasCompletedOnboarding,
     today,
+    completionLookup,
     completeReading,
     currentReadThrough,
     finishedReadThroughs,
@@ -68,8 +69,10 @@ export function ProgressScreen({
   const streaks = useStreaks();
   const { todayReading, todayProgress, unfinished, chaptersRead, canonIndex } =
     useReadingProgress();
+  // Any reading today closes the nudges on the server, extras included, so ask the full
+  // lookup: `todayReading` is the plan's view, which an extra does not complete.
   const { senders, dismiss } = useOpenNudges(initialNudges, {
-    todayCompleted: todayReading.status === "completed",
+    todayCompleted: completionLookup.has(today),
   });
 
   // A reset on this or another device ends the plan: back to onboarding, as on iOS.
