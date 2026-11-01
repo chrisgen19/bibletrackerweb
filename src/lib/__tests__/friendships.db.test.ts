@@ -97,6 +97,9 @@ describe("sending requests", () => {
     expect(await pairCount(alice)).toBe(0);
   });
 
+  // 51 users and 51 sequential requests: under `pnpm verify` (three time zones run one
+  // after another, each run beside the dom suites) this ran 5.2s against the 5s default
+  // and failed at random.
   it("caps outgoing pending requests at 50", async () => {
     const targets = await Promise.all(
       Array.from({ length: MAX_PENDING_OUTGOING + 1 }, () => createTestUser()),
@@ -107,7 +110,7 @@ describe("sending requests", () => {
     }
     expect(await sendFriendRequest(alice, overflow)).toBe("too-many-pending");
     expect(await pairCount(alice)).toBe(MAX_PENDING_OUTGOING);
-  });
+  }, 15_000);
 });
 
 describe("responding to requests", () => {
